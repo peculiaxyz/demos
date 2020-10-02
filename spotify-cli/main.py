@@ -1,16 +1,49 @@
-# This is a sample Python script.
-
-# Press Shift+F10 to execute it or replace it with your code.
-# Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
+import _authorizer
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press Ctrl+F8 to toggle the breakpoint.
+class SpotifyAPIWrapper:
+    def __init__(self, access_token):
+        self._access_token = access_token
+
+    @staticmethod
+    def _check_authentication():
+        if not _authorizer.AuthorizerService.is_logged_in():
+            _authorizer.AuthorizerService.login()
+            return False
+        return True
+
+    def get_saved_albums(self):
+        if self._access_token in (None, ''):
+            print('Çant read albums, user is not authorized')
+            return
+        print('Returning all your albumbs...')
 
 
-# Press the green button in the gutter to run the script.
+IS_AUTHFLOW_COMPLETE = False
+API = SpotifyAPIWrapper('')
+
+
+def on_auth_finished():
+    global API, IS_AUTHFLOW_COMPLETE
+    print('Print auth finished - should return something to monitor auth state?')
+    print('Access token: ', _authorizer.AuthorizerService.get_access_token())
+    API = SpotifyAPIWrapper(_authorizer.AuthorizerService.get_access_token())
+    IS_AUTHFLOW_COMPLETE = True
+    return API
+
+
+def main():
+    _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_SUCCESS, on_auth_finished)
+    _authorizer.AuthorizerService.login()
+    while not IS_AUTHFLOW_COMPLETE:
+        pass
+    print('All good..Running Test Query Now')
+    API.get_saved_albums()
+
+
+# Wait for authorization before continuing
+# While true, keep waiting if flow is in progress
+# Eslse intiate a new request
+
 if __name__ == '__main__':
-    print_hi('PyCharm')
-
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+    main()
