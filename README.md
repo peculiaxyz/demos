@@ -3,7 +3,7 @@ A list of getting started and advanced code demos featuring Azure, Django, Ionic
 
 ## Projects
 
-***Python**
+***Python***
 
 * Spotify-CLI
-  * A simple command line app for interacting with the Spotify Rest API
+  * A simple Python Command Line app for interacting with the Spotify Rest API
