@@ -3,13 +3,16 @@
 __author__ = 'N Nemakhavhani'
 __all__ = ['AuthorizerService', 'AuthEvent']
 
+import dataclasses
 import json
 import threading
 import traceback
 import urllib.parse as urllib
 import webbrowser
+from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from http import HTTPStatus
 
 import requests
 from flask import Flask, Request, request
@@ -50,6 +53,31 @@ class AuthEvent(Enum):
 class AuthServerStatus(Enum):
     RUNNING = 'RUNNING'
     STOPPED = 'STOPPED'
+
+
+@dataclass
+class SpotifyToken:
+    access_token: str = ''
+    token_type: str = ''
+    scopes: str = ''
+    expires_in: int = ''  # In seconds
+    refresh_token: str = ''
+    last_refreshed: datetime = datetime.now()
+
+    @classmethod
+    def from_json_response(cls, json_response):
+        token = cls()
+        token.access_token = json_response['access_token']
+        token.refresh_token = json_response['refresh_token']
+        token.token_type = json_response['token_type']
+        token.scopes = json_response['scope']
+        token.expires_in = json_response['expires_in']
+        return token
+
+    @property
+    def has_expired(self):
+        elapsed_seconds = (self.last_refreshed - datetime.now()).seconds
+        return elapsed_seconds >= self.expires_in
 
 
 class AuthorizerService:
@@ -110,21 +138,24 @@ def add_auth_subsciber(event_id, event_handler):
 
 # region Request Handler Helpers
 
-def _save_access_token(request_object: Request):
-    credentials = {
-        "access_token": request_object.args.get('access_token'),
-        "token_type": request_object.args.get('token_type'),
-        "expires_in": request_object.args.get('expires_in')
-    }
+def _save_access_token(json_response):
+    token_object = SpotifyToken.from_json_response(json_response)
+    credentials = dataclasses.asdict(token_object)
     with open(CREDENTIALS_STORE, 'w') as json_file:
         json.dump(credentials, json_file, indent=4)
 
 
 def _notify_auth_started(req: Request):
-    pass
+    print('Raise %s event' % AuthEvent.AUTH_STARTED)
+    if not _auth_subscribers:
+        return
+
+    subscriber_list = _auth_subscribers.get(AuthEvent.AUTH_STARTED)
+    for sub in subscriber_list:
+        sub()
 
 
-def _notify_auth_success(req: Request):
+def _notify_auth_success():
     print('Raise %s event' % AuthEvent.AUTH_SUCCESS)
     if not _auth_subscribers:
         return
@@ -134,38 +165,36 @@ def _notify_auth_success(req: Request):
         sub()
 
 
-def _notify_auth_failed(req: Request):
-    pass
+def _notify_auth_failed():
+    print('Raise %s event' % AuthEvent.AUTH_FAILED)
+    if not _auth_subscribers:
+        return
+
+    subscriber_list = _auth_subscribers.get(AuthEvent.AUTH_FAILED)
+    for sub in subscriber_list:
+        sub()
+
+
+def _on_access_tokens_received(json_response):
+    _save_access_token(json_response)
+    _notify_auth_success()
+    return 0
 
 
 def _on_auth_code_received():
     """Going to use the code we received to get an Access + Refresh token"""
     code = request.args.get('code')
-    print("ASK FOR TOKEN WITH CODE", code)
-    request_params = {
-        'client_id': CLIENT_ID,
-        'client_secret': CLIENT_SECRET
-    }
     body = {'grant_type': 'authorization_code',
             'code': code,
             'client_id': CLIENT_ID,
             'client_secret': CLIENT_SECRET,
             'redirect_uri': REDIRECT_URI
             }
-    req_url = TOKEN_EXCHANGE_URL
-
-    response = requests.post(req_url, data=body)
-    json_response = response.json()
-    print('Access token', json_response['access_token'])
-    print(response.status_code)
-    print(response.text)
-    print(response.headers)
-    print(response)
-
-
-def _on_access_tokens_received():
-    _save_access_token(request)
-    _notify_auth_success(request)
+    response = requests.post(TOKEN_EXCHANGE_URL, data=body)
+    if response.status_code == HTTPStatus.OK:
+        return _on_access_tokens_received(response.json())
+    print(response.text)  # TODO: use a logger
+    raise ValueError('Request for access token from autorization code failed')
 
 
 # endregion
@@ -189,6 +218,7 @@ def on_auth_callback():
         _on_access_tokens_received()
         return 'Authentication successfull'
     except Exception as e:
+        _notify_auth_failed()
         traceback.print_exc()
         return 'Not authenticated, unexpected error occured.'
 
