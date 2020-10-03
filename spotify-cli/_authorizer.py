@@ -3,7 +3,6 @@
 __author__ = 'N Nemakhavhani'
 __all__ = ['AuthorizerService', 'AuthEvent']
 
-import dataclasses
 import json
 import threading
 import traceback
@@ -15,12 +14,13 @@ from enum import Enum
 from http import HTTPStatus
 
 import requests
-from flask import Flask, Request, request
+from flask import Flask, request
 
 app = Flask(__name__)
 HOST_IP = '127.0.0.1'
 HOST_PORT = 6949
 CREDENTIALS_STORE = '.creds.json'  # TODO: must be an environment variable
+STD_DATETIME_FMT = '%Y%m%d_%H:%M:%S'
 _auth_subscribers = {}
 
 """
@@ -79,6 +79,17 @@ class SpotifyToken:
         elapsed_seconds = (self.last_refreshed - datetime.now()).seconds
         return elapsed_seconds >= self.expires_in
 
+    def to_dict(self):
+        token = {
+            'access_token': self.access_token,
+            'refresh_token': self.refresh_token,
+            'token_type': self.token_type,
+            'scope': self.scopes,
+            'expires_in': self.expires_in,
+            'last_refreshed': datetime.strftime(self.last_refreshed, STD_DATETIME_FMT)
+        }
+        return token
+
 
 class AuthorizerService:
     __status = AuthServerStatus.STOPPED
@@ -114,7 +125,7 @@ class AuthorizerService:
         return AuthorizerService.__status
 
     @staticmethod
-    def stop():
+    def shutdown():
         AuthorizerService._shutdown_dev_server()
         AuthorizerService.__status = AuthServerStatus.STOPPED
         return AuthorizerService.__status
@@ -140,12 +151,12 @@ def add_auth_subsciber(event_id, event_handler):
 
 def _save_access_token(json_response):
     token_object = SpotifyToken.from_json_response(json_response)
-    credentials = dataclasses.asdict(token_object)
     with open(CREDENTIALS_STORE, 'w') as json_file:
-        json.dump(credentials, json_file, indent=4)
+        json.dump(token_object.to_dict(), json_file, indent=4)
+        print('Security info succcessfully stored.')
 
 
-def _notify_auth_started(req: Request):
+def _notify_auth_started():
     print('Raise %s event' % AuthEvent.AUTH_STARTED)
     if not _auth_subscribers:
         return
@@ -170,7 +181,7 @@ def _notify_auth_failed():
     if not _auth_subscribers:
         return
 
-    subscriber_list = _auth_subscribers.get(AuthEvent.AUTH_FAILED)
+    subscriber_list = _auth_subscribers.get(AuthEvent.AUTH_FAILED) or []
     for sub in subscriber_list:
         sub()
 
@@ -215,8 +226,7 @@ def on_auth_callback():
             _on_auth_code_received()
             return 'Code granted.Requesting Access tokeb'
 
-        _on_access_tokens_received()
-        return 'Authentication successfull'
+        raise RuntimeError('Authorization code not granted')
     except Exception as e:
         _notify_auth_failed()
         traceback.print_exc()

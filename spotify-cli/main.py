@@ -29,6 +29,7 @@ def on_auth_finished():
     print('Access token: ', _authorizer.AuthorizerService.get_access_token())
     API = SpotifyAPIWrapper(_authorizer.AuthorizerService.get_access_token())
     IS_AUTHFLOW_COMPLETE = True
+    _authorizer.AuthorizerService.shutdown()
     return API
 
 
