@@ -4,6 +4,7 @@ __author__ = 'N Nemakhavhani'
 __all__ = ['AuthorizerService', 'AuthEvent']
 
 import json
+import os
 import threading
 import traceback
 import urllib.parse as urllib
@@ -79,6 +80,16 @@ class SpotifyToken:
         elapsed_seconds = (self.last_refreshed - datetime.now()).seconds
         return elapsed_seconds >= self.expires_in
 
+    @property
+    def is_authenticated(self):
+        return self.access_token not in (None, '') and self.has_expired is False
+
+    def has_scopes(self, scopes: str):
+        """Verify that the currently granted token has the passed in scopes"""
+        input_scopes_list = filter(lambda x: x not in (None, ''), scopes.split(' '))
+        granted_scopes_list = filter(lambda x: x not in (None, ''), self.scopes.split(' '))
+        return all(item in granted_scopes_list for item in input_scopes_list)
+
     def to_dict(self):
         token = {
             'access_token': self.access_token,
@@ -93,6 +104,7 @@ class SpotifyToken:
 
 class AuthorizerService:
     __status = AuthServerStatus.STOPPED
+    __credentials = None
 
     @staticmethod
     def get_status():
@@ -104,6 +116,26 @@ class AuthorizerService:
         if func is None:
             raise RuntimeError('Not running with the Werkzeug Server')
         func()
+
+    @staticmethod
+    def _load_credentials_from_file():
+        if not os.path.exists(CREDENTIALS_STORE):
+            response = input('User not authenticated, would you lik to sign in Y / N?')
+            if response.strip().lower() in ('y', 'yes'):
+                AuthorizerService.login()
+                return 0
+            else:
+                print('No credentials saved for user.')
+                return -1
+        with open(CREDENTIALS_STORE) as json_file:
+            credentials = json.load(json_file)
+            return credentials
+
+    @staticmethod
+    def get_user_credentials():
+        if AuthorizerService.__credentials is not None:
+            return AuthorizerService.__credentials
+        return AuthorizerService._load_credentials_from_file()
 
     @staticmethod
     def get_access_token():
@@ -138,6 +170,11 @@ class AuthorizerService:
     def login():
         webbrowser.open_new_tab(request_url)
         AuthorizerService.start()
+
+    @classmethod
+    def check_scopes(cls, _scopes):
+        """Check if the required scopes are already granted, else request the scopes from auth server"""
+        pass
 
 
 def add_auth_subsciber(event_id, event_handler):

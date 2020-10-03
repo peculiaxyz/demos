@@ -4,6 +4,8 @@ from typing import List
 
 import requests
 
+import _authorizer
+
 
 # region Spotify constants
 
@@ -22,7 +24,7 @@ class SpotifyEndPoints(Enum):
 class RequestExecutorBase(abc.ABC):
     def __init__(self, request_url, scopes):
         self._requet_url = request_url
-        self._scope = scopes
+        self._scopes = scopes
         self._headers = {}
         self._params = {}
         self._body = {}
@@ -66,16 +68,25 @@ class RequestExecutorBase(abc.ABC):
         self._body[key] = value
         return self._body[key]
 
+    def authorization_rquest(self):
+        _authorizer.AuthorizerService.login()
+        _authorizer.AuthorizerService.check_scopes(self._scopes)
+
     @abc.abstractmethod
-    def execute(self):
+    def execute_request(self):
         pass
+
+    def execute(self):
+        self.authorization_rquest()
+        self.execute()
+        return {}
 
 
 class GetRequestExecutor(RequestExecutorBase):
     def __init__(self, request_url, scopes):
         super().__init__(request_url, scopes)
 
-    def execute(self):
+    def execute_request(self):
         response = requests.get(self._requet_url,
                                 headers=self._headers,
                                 params=self._params)
