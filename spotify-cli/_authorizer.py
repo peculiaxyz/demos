@@ -17,32 +17,21 @@ from http import HTTPStatus
 import requests
 from flask import Flask, request
 
+import _shared_mod
+
 app = Flask(__name__)
-HOST_IP = '127.0.0.1'
-HOST_PORT = 6949
-CREDENTIALS_STORE = '.creds.json'  # TODO: must be an environment variable
-STD_DATETIME_FMT = '%Y%m%d_%H:%M:%S'
 _auth_subscribers = {}
 
-"""
-For testing we will  use Implicit Grant Flow(Only works on pure JS sites - No servers).
-
-However Authorization Code Flow is 'more' secure.
-Ref: https://developer.okta.com/blog/2018/04/10/oauth-authorization-code-grant-type
-"""
-AUTHORIZE_URL = 'https://accounts.spotify.com/authorize/?'
-TOKEN_EXCHANGE_URL = 'https://accounts.spotify.com/api/token/?'
-SCOPES = 'user-read-email user-library-read'
-CLIENT_ID = '8fed9a69a36f416e9d1069c3a74f23f3'
-CLIENT_SECRET = '3f5b1bbc48ed4f06bb8b44dc1bfed495'
-REDIRECT_URI = 'http://localhost:6949/authcallback'
-REQUEST_PARAMS = {'response_type': 'code',
-                  'client_id': CLIENT_ID,
-                  'redirect_uri': REDIRECT_URI,
-                  'scope': SCOPES,
-                  'state': 'anythingRandom',
-                  'show_dialog': 'true'}
-request_url = AUTHORIZE_URL + urllib.urlencode(REQUEST_PARAMS)
+HOST_IP = os.environ.get('HOST_IP')
+HOST_PORT = os.environ.get('HOST_PORT')
+CREDENTIALS_STORE = os.environ.get('CREDENTIALS_STORE')
+CLIENT_ID = os.environ.get('CLIENT_ID')
+CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
+REDIRECT_URI = os.environ.get('REDIRECT_URI')
+DEFAULT_SCOPES = ' '.join([_shared_mod.SpotifyScope.READ_PRIVATE.value,
+                           _shared_mod.SpotifyScope.READ_EMAIL.value,
+                           _shared_mod.SpotifyScope.READ_LIBRARY.value])
+STD_DATETIME_FMT = '%Y%m%d_%H:%M:%S'
 
 
 class AuthEvent(Enum):
@@ -68,11 +57,11 @@ class SpotifyToken:
     @classmethod
     def from_json_response(cls, json_response):
         token = cls()
-        token.access_token = json_response['access_token']
-        token.refresh_token = json_response['refresh_token']
-        token.token_type = json_response['token_type']
-        token.scopes = json_response['scope']
-        token.expires_in = json_response['expires_in']
+        token.access_token = json_response[_shared_mod.SpotifyAuthSections.ACCESS_TOKEN.value]
+        token.refresh_token = json_response[_shared_mod.SpotifyAuthSections.REFRESH_TOKEN.value]
+        token.token_type = json_response[_shared_mod.SpotifyAuthSections.TOKEN_TYPE.value]
+        token.scopes = json_response[_shared_mod.SpotifyAuthSections.SCOPE.value]
+        token.expires_in = json_response[_shared_mod.SpotifyAuthSections.EXPIRES_IN.value]
         return token
 
     @property
@@ -103,19 +92,7 @@ class SpotifyToken:
 
 
 class AuthorizerService:
-    __status = AuthServerStatus.STOPPED
     __credentials = None
-
-    @staticmethod
-    def get_status():
-        return AuthorizerService.__status
-
-    @staticmethod
-    def _shutdown_dev_server():
-        func = request.environ.get('werkzeug.server.shutdown')
-        if func is None:
-            raise RuntimeError('Not running with the Werkzeug Server')
-        func()
 
     @staticmethod
     def _load_credentials_from_file():
@@ -123,13 +100,14 @@ class AuthorizerService:
             response = input('User not authenticated, would you lik to sign in Y / N?')
             if response.strip().lower() in ('y', 'yes'):
                 AuthorizerService.login()
-                return 0
+                return None
             else:
                 print('No credentials saved for user.')
-                return -1
+                return None
         with open(CREDENTIALS_STORE) as json_file:
             credentials = json.load(json_file)
-            return credentials
+            AuthorizerService.__credentials = SpotifyToken.from_json_response(credentials)
+            return AuthorizerService.__credentials
 
     @staticmethod
     def get_user_credentials():
@@ -139,43 +117,70 @@ class AuthorizerService:
 
     @staticmethod
     def get_access_token():
+
         with open(CREDENTIALS_STORE) as json_file:
             credentials = json.load(json_file)
             return credentials.get('access_token')
 
     @staticmethod
-    def _start():
-        print('Authorizer service started at %s' % datetime.now())
-        app.run(HOST_IP, HOST_PORT)
-        AuthorizerService.__status = AuthServerStatus.RUNNING
-        return AuthorizerService.__status
-
-    @staticmethod
-    def start():
-        t = threading.Thread(target=AuthorizerService._start)
-        t.start()
-        return AuthorizerService.__status
-
-    @staticmethod
-    def shutdown():
-        AuthorizerService._shutdown_dev_server()
-        AuthorizerService.__status = AuthServerStatus.STOPPED
-        return AuthorizerService.__status
-
-    @staticmethod
     def is_logged_in():
         pass
-
-    @staticmethod
-    def login():
-        webbrowser.open_new_tab(request_url)
-        AuthorizerService.start()
 
     @classmethod
     def check_scopes(cls, _scopes):
         """Check if the required scopes are already granted, else request the scopes from auth server"""
         pass
 
+    @staticmethod
+    def login():
+        auth_req_params = {'response_type': 'code',
+                           'client_id': CLIENT_ID,
+                           'redirect_uri': REDIRECT_URI,
+                           'scope': DEFAULT_SCOPES,
+                           'state': 'anythingRandom',
+                           'show_dialog': 'true'}
+        auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL + urllib.urlencode(auth_req_params)
+        webbrowser.open_new_tab(auth_url)
+        AuthorizationServer.start()
+
+
+class AuthorizationServer:
+    __status = AuthServerStatus.STOPPED
+
+    @staticmethod
+    def get_status():
+        return AuthorizationServer.__status
+
+    @staticmethod
+    def _start():
+        print('AuthorizationServer started at %s' % datetime.now())
+        app.run(HOST_IP, HOST_PORT)
+        AuthorizerService.__status = AuthServerStatus.RUNNING
+        return AuthorizationServer.__status
+
+    @staticmethod
+    def start():
+        t = threading.Thread(target=AuthorizationServer._start)
+        t.start()
+        return AuthorizationServer.__status
+
+    @staticmethod
+    def shutdown():
+        AuthorizationServer._shutdown_dev_server()
+        AuthorizationServer.__status = AuthServerStatus.STOPPED
+        print('Authorizer server status = %s at %s' % (AuthorizationServer.__status, datetime.now()))
+        return AuthorizationServer.__status
+
+    @staticmethod
+    def _shutdown_dev_server():
+        print('Authorization Server Shutting down..')
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+
+# region Events
 
 def add_auth_subsciber(event_id, event_handler):
     if event_id in _auth_subscribers:
@@ -183,6 +188,8 @@ def add_auth_subsciber(event_id, event_handler):
         return 0
     _auth_subscribers[event_id] = [event_handler]
 
+
+# endregion
 
 # region Request Handler Helpers
 
@@ -238,7 +245,7 @@ def _on_auth_code_received():
             'client_secret': CLIENT_SECRET,
             'redirect_uri': REDIRECT_URI
             }
-    response = requests.post(TOKEN_EXCHANGE_URL, data=body)
+    response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL, data=body)
     if response.status_code == HTTPStatus.OK:
         return _on_access_tokens_received(response.json())
     print(response.text)  # TODO: use a logger

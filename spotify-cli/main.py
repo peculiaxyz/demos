@@ -1,3 +1,4 @@
+import dotenv
 import requests
 
 import _authorizer
@@ -47,6 +48,7 @@ def on_auth_finished():
 
 
 def main():
+    dotenv.load_dotenv()
     _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_SUCCESS, on_auth_finished)
     _authorizer.AuthorizerService.login()
     while not IS_AUTHFLOW_COMPLETE:

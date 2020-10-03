@@ -1,25 +1,10 @@
 import abc
-from enum import Enum
 from typing import List
 
 import requests
 
 import _authorizer
 
-
-# region Spotify constants
-
-class SpotifyScope(Enum):
-    READ_EMAIL = 'user-read-email'
-    READ_PRIVATE = 'user-read-private'
-
-
-class SpotifyEndPoints(Enum):
-    CURRENT_USER = 'https://api.spotify.com/v1/me'
-    PUBLIC_USERS = 'https://api.spotify.com/v1/users'
-
-
-# endregion
 
 class RequestExecutorBase(abc.ABC):
     def __init__(self, request_url, scopes):
