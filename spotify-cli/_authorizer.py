@@ -31,7 +31,7 @@ Ref: https://developer.okta.com/blog/2018/04/10/oauth-authorization-code-grant-t
 """
 AUTHORIZE_URL = 'https://accounts.spotify.com/authorize/?'
 TOKEN_EXCHANGE_URL = 'https://accounts.spotify.com/api/token/?'
-SCOPES = 'user-read-private user-read-email'
+SCOPES = 'user-read-email user-library-read'
 CLIENT_ID = '8fed9a69a36f416e9d1069c3a74f23f3'
 CLIENT_SECRET = '3f5b1bbc48ed4f06bb8b44dc1bfed495'
 REDIRECT_URI = 'http://localhost:6949/authcallback'

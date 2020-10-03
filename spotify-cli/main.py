@@ -1,3 +1,5 @@
+import requests
+
 import _authorizer
 
 
@@ -13,10 +15,21 @@ class SpotifyAPIWrapper:
         return True
 
     def get_saved_albums(self):
+        req_url = 'https://api.spotify.com/v1/me/albums'
+        required_scope = ['user-library-read']
         if self._access_token in (None, ''):
             print('Çant read albums, user is not authorized')
             return
-        print('Returning all your albumbs...')
+        params = {
+            'limit': 50,
+        }
+        request_header = {'Authorization': f'Bearer {self._access_token}'}
+        response = requests.get(req_url, params=params, headers=request_header)
+        if response.status_code == 200:
+            print('Returning all your albumbs...')
+            print(response.json())
+        else:
+            raise ValueError('Albums not found. Response code: %s' % response.status_code)
 
 
 IS_AUTHFLOW_COMPLETE = False
