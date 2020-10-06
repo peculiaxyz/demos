@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import Union
 
@@ -29,6 +30,14 @@ class MissingScopesError(Exception):
         return f'The following scopes required to execute the comand are missing. {self.scopes}.'
 
 
+class InvalidOperationError(Exception):
+    pass
+
+
+class SpotifyAPICallError(Exception):
+    pass
+
+
 # endregion
 
 
@@ -38,6 +47,7 @@ class SpotifyScope(Enum):
     READ_EMAIL = 'user-read-email'
     READ_PRIVATE = 'user-read-private'
     READ_LIBRARY = 'user-library-read'
+    READ_TOP = 'user-top-read'
 
 
 class SpotifyEndPoints(Enum):
@@ -48,6 +58,7 @@ class SpotifyEndPoints(Enum):
     # API endpoints
     CURRENT_USER = 'https://api.spotify.com/v1/me'
     PUBLIC_USERS = 'https://api.spotify.com/v1/users'
+    TOP_TRACKS_ARTISTS = 'https://api.spotify.com/v1/me/top'
 
 
 class SpotifyAuthSections(Enum):
@@ -57,4 +68,17 @@ class SpotifyAuthSections(Enum):
     EXPIRES_IN = 'expires_in'
     CODE = 'code'
     SCOPE = 'scope'
+
+
 # endregion
+
+
+# region Spotify Request Param Objects
+@dataclass
+class PersonlisationParams(object):
+    entity_type = ''
+    time_range: str = ''
+    limit = 0
+    offset = 0
+
+# region

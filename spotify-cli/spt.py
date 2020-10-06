@@ -4,13 +4,15 @@ import abc
 import argparse
 import sys
 import traceback
-from dataclasses import dataclass
 from typing import Type
+
+import dotenv
 
 import _authorizer
 import _shared_mod
-
 # Shared parser - stores shared options
+from _spotify_api_collection import PersonalisationAPI
+
 common_fetch_parser = argparse.ArgumentParser(add_help=False)
 common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help='The maximum number of objects to '
                                                                                  'return. Default: 20. Minimum: 1. '
@@ -54,7 +56,7 @@ class CommandHandler(abc.ABC):
         if str(response) not in ('Y', 'y', 'yes'):
             return 0
         print('Initiating a request to get additional scopes: ', scopes)
-        _authorizer.AuthorizerService.login(scopes)
+        _authorizer.AuthorizerService.get_more_scopes(new_scopes=scopes)
 
     @abc.abstractmethod
     def handle(self):
@@ -65,10 +67,11 @@ class CommandHandler(abc.ABC):
             return self.handle()
         except _shared_mod.NotLoggedInError:
             print(traceback.format_exc())
-
         except _shared_mod.MissingScopesError as ex:
             print(traceback.format_exc())
             self.handle_missing_scopes_error(ex.scopes)
+        except _shared_mod.SpotifyAPICallError:
+            print(traceback.format_exc())
         except Exception as ex:
             print(f'[ {self.__name__} - execute encountered an unexpected error ]')
             print(ex)
@@ -85,14 +88,6 @@ class LibraryCommandHandler(CommandHandler):
         print('Library API handler intialised')
 
 
-@dataclass
-class PersonaliseCommandArgs:
-    entity_type = ''
-    time_range: str = ''
-    limit = 0
-    offset = 0
-
-
 class PersonalisationCommandHandler(CommandHandler):
     def __init__(self, context_object):
         super().__init__(context_object)
@@ -102,14 +97,19 @@ class PersonalisationCommandHandler(CommandHandler):
         }
 
     def _populate_args(self):
-        self._args = PersonaliseCommandArgs()
+        self._args = _shared_mod.PersonlisationParams()
         self._args.time_range = self._Context.time_range
         self._args.offset = self._Context.offset
         self._args.limit = self._Context.limit
         return self._args
 
     def _get_top_artists(self):
-        print('Finding your top artists')
+        print('Finding your top artists..')
+        self._args.entity_type = 'artists'
+        api = PersonalisationAPI(params=self._args)
+        json_response = api.get_top_tracks_and_artists()
+        print()
+        print(json_response)
 
     def handle(self):
         function_name = sys.argv[2]
@@ -154,9 +154,16 @@ class CommandDispatcher:
         handlder_obj.execute()
 
 
+class BootStrapper:
+    @staticmethod
+    def execute():
+        dotenv.load_dotenv()
+
+
 def main():
     try:
         print('Initialise spt CLI..')
+        BootStrapper.execute()
         cmd_dispatcher = CommandDispatcher(parser_obj=parser)
         cmd_dispatcher.execute()
     except _shared_mod.InvalidCommandError:

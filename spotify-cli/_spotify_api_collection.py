@@ -8,7 +8,7 @@ import _shared_mod
 
 
 class RequestExecutorBase(abc.ABC):
-    def __init__(self, request_url, scopes):
+    def __init__(self, request_url: str, scopes: List):
         self._requet_url = request_url
         self._scopes = scopes
         self._headers = {}
@@ -66,8 +66,15 @@ class RequestExecutorBase(abc.ABC):
         pass
 
     def execute(self):
-        self.check_authorization()
-        return self.execute_request()
+        try:
+            self.check_authorization()
+            return self.execute_request()
+        except _shared_mod.NotLoggedInError:
+            raise
+        except _shared_mod.MissingScopesError:
+            raise
+        except Exception as ex:
+            raise _shared_mod.SpotifyAPICallError(f'Spotify API call failed {ex}')
 
 
 class GetRequestExecutor(RequestExecutorBase):
@@ -99,7 +106,7 @@ class UserProfileAPI(SpotifyAPIBase):
         ]
 
     def get_current_users_profile(self):
-        req = GetRequestExecutor(_shared_mod.SpotifyEndPoints.CURRENT_USER,
+        req = GetRequestExecutor(_shared_mod.SpotifyEndPoints.CURRENT_USER.value,
                                  scopes=self.RequiredScopes)
         json_response = req.execute()
         return json_response
@@ -113,8 +120,25 @@ class UserProfileAPI(SpotifyAPIBase):
 
 
 class PersonalisationAPI(SpotifyAPIBase):
+    def __init__(self, params: _shared_mod.PersonlisationParams):
+        super().__init__()
+        self._params = params
+        self.RequiredScopes = [
+            _shared_mod.SpotifyScope.READ_TOP
+        ]
+
     def get_top_tracks_and_artists(self):
-        pass
+        url = f'{_shared_mod.SpotifyEndPoints.TOP_TRACKS_ARTISTS.value}/{self._params.entity_type}'
+        url_params = {
+            'time_range': self._params.time_range,
+            'limit': self._params.limit,
+            'offset': self._params.offset
+        }
+        req = GetRequestExecutor(request_url=url,
+                                 scopes=self.RequiredScopes)
+        req.params = url_params
+        json_response = req.execute()
+        return json_response
 
 
 class LibraryAPI(SpotifyAPIBase):
