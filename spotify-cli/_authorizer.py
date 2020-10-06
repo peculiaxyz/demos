@@ -21,20 +21,15 @@ import _shared_mod
 
 app = Flask(__name__)
 _auth_subscribers = {}
-
-HOST_IP = os.environ.get('HOST_IP')
-HOST_PORT = os.environ.get('HOST_PORT')
-CREDENTIALS_STORE = os.environ.get('CREDENTIALS_STORE')
-CLIENT_ID = os.environ.get('CLIENT_ID')
-CLIENT_SECRET = os.environ.get('CLIENT_SECRET')
-REDIRECT_URI = os.environ.get('REDIRECT_URI')
 DEFAULT_SCOPES = ' '.join([_shared_mod.SpotifyScope.READ_PRIVATE.value,
                            _shared_mod.SpotifyScope.READ_EMAIL.value,
                            _shared_mod.SpotifyScope.READ_LIBRARY.value])
 STD_DATETIME_FMT = '%Y%m%d_%H:%M:%S'
+AUTHENTICATION_ERROR = 'Authorization code not received.\nError Code: Http %s.\nError Message: %s'
 
 
 class AuthEvent(Enum):
+    AUTH_COMPLETED = 'AUTH_COMPLETED'
     AUTH_SUCCESS = 'AUTH_SUCCESS'
     AUTH_FAILED = 'AUTH_FAILED'
     AUTH_STARTED = 'AUTH_STARTED'
@@ -96,15 +91,11 @@ class AuthorizerService:
 
     @staticmethod
     def _load_credentials_from_file():
-        if not os.path.exists(CREDENTIALS_STORE):
-            response = input('User not authenticated, would you lik to sign in Y / N?')
-            if response.strip().lower() in ('y', 'yes'):
-                AuthorizerService.login()
-                return None
-            else:
-                print('No credentials saved for user. Use "spt login" to get obtain credentials')
-                return None
-        with open(CREDENTIALS_STORE) as json_file:
+        credpath = os.getenv('CREDENTIALS_STORE')
+        if not os.path.exists(credpath):
+            return None
+
+        with open(credpath) as json_file:
             credentials = json.load(json_file)
             AuthorizerService.__credentials = SpotifyToken.from_json_response(credentials)
             return AuthorizerService.__credentials
@@ -137,8 +128,26 @@ class AuthorizerService:
     @staticmethod
     def login(scopes=DEFAULT_SCOPES):
         auth_req_params = {'response_type': 'code',
-                           'client_id': CLIENT_ID,
-                           'redirect_uri': REDIRECT_URI,
+                           'client_id': os.getenv('CLIENT_ID'),
+                           'redirect_uri': os.getenv('REDIRECT_URI'),
+                           'scope': scopes,
+                           'state': 'anythingRandom',
+                           'show_dialog': 'true'}
+        auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL + urllib.urlencode(auth_req_params)
+        webbrowser.open_new_tab(auth_url)
+        AuthorizationServer.start()
+
+    @staticmethod
+    def get_more_scopes(new_scopes: str):
+        if AuthorizerService.is_logged_in() is False:
+            raise _shared_mod.InvalidOperationError('You must be logged-in to request more scopes. '
+                                                    'Use `spotify login` to authenticate')
+        existing_scopes = AuthorizerService.get_user_credentials().scopes
+        scopes = f'{existing_scopes.strip()} {new_scopes.strip()}'
+
+        auth_req_params = {'response_type': 'code',
+                           'client_id': os.getenv('CLIENT_ID'),
+                           'redirect_uri': os.getenv('REDIRECT_URI'),
                            'scope': scopes,
                            'state': 'anythingRandom',
                            'show_dialog': 'true'}
@@ -157,7 +166,7 @@ class AuthorizationServer:
     @staticmethod
     def _start():
         print('AuthorizationServer started at %s' % datetime.now())
-        app.run(HOST_IP, HOST_PORT)
+        app.run(os.getenv('HOST_IP'), os.getenv('HOST_PORT'))
         AuthorizerService.__status = AuthServerStatus.RUNNING
         return AuthorizationServer.__status
 
@@ -198,7 +207,7 @@ def add_auth_subsciber(event_id, event_handler):
 
 def _save_access_token(json_response):
     token_object = SpotifyToken.from_json_response(json_response)
-    with open(CREDENTIALS_STORE, 'w') as json_file:
+    with open(os.getenv('CREDENTIALS_STORE'), 'w') as json_file:
         json.dump(token_object.to_dict(), json_file, indent=4)
         print('Security info succcessfully stored.')
 
@@ -213,6 +222,16 @@ def _notify_auth_started():
         sub()
 
 
+def _notify_auth_completed(has_error: bool):
+    print('Raise %s event' % AuthEvent.AUTH_COMPLETED)
+    if not _auth_subscribers:
+        return
+
+    subscriber_list = _auth_subscribers.get(AuthEvent.AUTH_COMPLETED)
+    for sub in subscriber_list:
+        sub(has_error)
+
+
 def _notify_auth_success():
     print('Raise %s event' % AuthEvent.AUTH_SUCCESS)
     if not _auth_subscribers:
@@ -223,7 +242,7 @@ def _notify_auth_success():
         sub()
 
 
-def _notify_auth_failed():
+def _notify_auth_failed(ex):
     print('Raise %s event' % AuthEvent.AUTH_FAILED)
     if not _auth_subscribers:
         return
@@ -233,26 +252,21 @@ def _notify_auth_failed():
         sub()
 
 
-def _on_access_tokens_received(json_response):
-    _save_access_token(json_response)
-    _notify_auth_success()
-    return 0
-
-
 def _on_auth_code_received():
     """Going to use the code we received to get an Access + Refresh token"""
     code = request.args.get('code')
     body = {'grant_type': 'authorization_code',
             'code': code,
-            'client_id': CLIENT_ID,
-            'client_secret': CLIENT_SECRET,
-            'redirect_uri': REDIRECT_URI
+            'client_id': os.getenv('CLIENT_ID'),
+            'client_secret': os.getenv('CLIENT_SECRET'),
+            'redirect_uri': os.getenv('REDIRECT_URI')
             }
     response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL, data=body)
     if response.status_code == HTTPStatus.OK:
-        return _on_access_tokens_received(response.json())
-    print(response.text)  # TODO: use a logger
-    raise ValueError('Request for access token from autorization code failed')
+        _save_access_token(response.json())
+        _notify_auth_completed(has_error=False)
+        return 0
+    raise _shared_mod.SpotifyAuthenticationError(AUTHENTICATION_ERROR % (response.status_code, response.text))
 
 
 # endregion
@@ -271,12 +285,13 @@ def on_auth_callback():
         code = request.args.get('code')
         if code not in (None, ''):
             _on_auth_code_received()
-            return 'Code granted.Requesting Access tokeb'
+            return 'Authorization Code granted. Now Requesting Access token'
 
-        raise RuntimeError('Authorization code not granted')
-    except Exception as e:
-        _notify_auth_failed()
-        traceback.print_exc()
-        return 'Not authenticated, unexpected error occured.'
+        raise _shared_mod.SpotifyAuthenticationError('Authorization code not granted. Check your Spotify Dashboard '
+                                                     'configuration.\nAuth server response %s' % request.args)
+    except Exception as ex:
+        _notify_auth_completed(has_error=True)
+        print(traceback.format_exc())
+        return 'Unexpected authentication error. %s' % ex
 
 # endregion

@@ -38,6 +38,10 @@ class SpotifyAPICallError(Exception):
     pass
 
 
+class SpotifyAuthenticationError(Exception):
+    pass
+
+
 # endregion
 
 

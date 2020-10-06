@@ -2,6 +2,7 @@
 
 import abc
 import argparse
+import datetime
 import sys
 import traceback
 from typing import Type
@@ -10,8 +11,11 @@ import dotenv
 
 import _authorizer
 import _shared_mod
+import _spotify_api_collection as spotify
+
+# region Parser Configuration
+
 # Shared parser - stores shared options
-from _spotify_api_collection import PersonalisationAPI
 
 common_fetch_parser = argparse.ArgumentParser(add_help=False)
 common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help='The maximum number of objects to '
@@ -22,6 +26,9 @@ common_fetch_parser.add_argument('--offset', '-o', default=0, dest='offset', hel
 # Top-level/Parent parser
 parser = argparse.ArgumentParser(prog='Interact with the Spotify Web API via the command line')
 subparsers = parser.add_subparsers(help='Typical usage: spt <subcommand> [subcomand options]')
+
+# [Spotify] Authentication subparser
+login_parser = subparsers.add_parser('login', help='Authenticate against Spotify Web API using OAuth')
 
 # [Spotify] Library API subparser
 library_parser = subparsers.add_parser('library', help='Get current users saved tracks, shows, albums etc.'
@@ -42,6 +49,9 @@ get_users_favourites_parser.add_argument('--time', '-tr',
                                          choices=['long_term', 'medium_term', 'short_term'],
                                          help='Time range, i.e. medium term(6 months), short term(4 weeks)'
                                               ' or long term(several years)')
+
+
+# endregion
 
 
 # region Command handlers
@@ -79,8 +89,28 @@ class CommandHandler(abc.ABC):
 
 
 class LoginCommandHandler(CommandHandler):
+    __SignInInprogress = False
+
+    @staticmethod
+    def on_auth_finished(has_error: bool):
+        LoginCommandHandler.__SignInInprogress = False
+        if has_error:
+            print('Authorization flow completed with errors. Please try again')
+            return -1
+        _authorizer.AuthorizationServer.shutdown()
+        return 0
+
+    @staticmethod
+    def _wait_for_sign_in_completion():
+        while LoginCommandHandler.__SignInInprogress:
+            pass  # Wait until we get a completed event from the auth service
+
     def handle(self):
-        print('Authorization flow intialised')
+        print(f'Authorization Code Flow intialised at {datetime.datetime.now()}')
+        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_SUCCESS, LoginCommandHandler.on_auth_finished)
+        LoginCommandHandler.__SignInInprogress = True
+        _authorizer.AuthorizerService.login()
+        self._wait_for_sign_in_completion()
 
 
 class LibraryCommandHandler(CommandHandler):
@@ -106,7 +136,7 @@ class PersonalisationCommandHandler(CommandHandler):
     def _get_top_artists(self):
         print('Finding your top artists..')
         self._args.entity_type = 'artists'
-        api = PersonalisationAPI(params=self._args)
+        api = spotify.PersonalisationAPI(params=self._args)
         json_response = api.get_top_tracks_and_artists()
         print()
         print(json_response)
