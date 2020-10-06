@@ -4,6 +4,7 @@ from typing import List
 import requests
 
 import _authorizer
+import _shared_mod
 
 
 class RequestExecutorBase(abc.ABC):
@@ -91,18 +92,18 @@ class UserProfileAPI(SpotifyAPIBase):
     def __init__(self):
         super().__init__()
         self.RequiredScopes = [
-            SpotifyScope.READ_EMAIL,
-            SpotifyScope.READ_PRIVATE
+            _shared_mod.SpotifyScope.READ_EMAIL,
+            _shared_mod.SpotifyScope.READ_PRIVATE
         ]
 
     def get_current_users_profile(self):
-        req = GetRequestExecutor(SpotifyEndPoints.CURRENT_USER,
+        req = GetRequestExecutor(_shared_mod.SpotifyEndPoints.CURRENT_USER,
                                  scopes=self.RequiredScopes)
         json_response = req.execute()
         return json_response
 
     def get_public_users_profile(self, user_id: str):
-        fullurl = f'{SpotifyEndPoints.PUBLIC_USERS}/{user_id}'
+        fullurl = f'{_shared_mod.SpotifyEndPoints.PUBLIC_USERS}/{user_id}'
         req = GetRequestExecutor(request_url=fullurl,
                                  scopes=self.RequiredScopes)
         json_response = req.execute()

@@ -102,7 +102,7 @@ class AuthorizerService:
                 AuthorizerService.login()
                 return None
             else:
-                print('No credentials saved for user.')
+                print('No credentials saved for user. Use "spt login" to get obtain credentials')
                 return None
         with open(CREDENTIALS_STORE) as json_file:
             credentials = json.load(json_file)
@@ -117,26 +117,29 @@ class AuthorizerService:
 
     @staticmethod
     def get_access_token():
-
-        with open(CREDENTIALS_STORE) as json_file:
-            credentials = json.load(json_file)
-            return credentials.get('access_token')
+        credentials = AuthorizerService.get_user_credentials()
+        return credentials.access_token if credentials is not None else ''
 
     @staticmethod
     def is_logged_in():
-        pass
-
-    @classmethod
-    def check_scopes(cls, _scopes):
-        """Check if the required scopes are already granted, else request the scopes from auth server"""
-        pass
+        if AuthorizerService.get_user_credentials() is None:
+            return False
+        return AuthorizerService.get_user_credentials().is_authenticated
 
     @staticmethod
-    def login():
+    def check_scopes(scopes, request_required_scope=True):
+        """Check if the required scopes are already granted, else request the scopes from auth server"""
+        has_scopes = AuthorizerService.get_user_credentials().has_scopes(scopes)
+        if has_scopes is False and request_required_scope:
+            pass
+        return has_scopes
+
+    @staticmethod
+    def login(scopes=DEFAULT_SCOPES):
         auth_req_params = {'response_type': 'code',
                            'client_id': CLIENT_ID,
                            'redirect_uri': REDIRECT_URI,
-                           'scope': DEFAULT_SCOPES,
+                           'scope': scopes,
                            'state': 'anythingRandom',
                            'show_dialog': 'true'}
         auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL + urllib.urlencode(auth_req_params)

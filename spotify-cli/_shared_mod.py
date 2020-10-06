@@ -5,6 +5,19 @@ class AppConfig:
     pass
 
 
+# region Custom Exceptions
+
+class InvalidCommandError(Exception):
+    pass
+
+
+class InvalidCommandHandlerError(Exception):
+    pass
+
+
+# endregion
+
+
 # region Spotify constants
 
 class SpotifyScope(Enum):
