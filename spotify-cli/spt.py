@@ -8,6 +8,7 @@ import traceback
 from typing import Type
 
 import dotenv
+from progress.spinner import Spinner
 
 import _authorizer
 import _shared_mod
@@ -83,7 +84,7 @@ class CommandHandler(abc.ABC):
         except _shared_mod.SpotifyAPICallError:
             print(traceback.format_exc())
         except Exception as ex:
-            print(f'[ {self.__name__} - execute encountered an unexpected error ]')
+            print(f'[ {type(self).__name__} - execute encountered an unexpected error ]')
             print(ex)
             traceback.print_exc()
 
@@ -102,12 +103,15 @@ class LoginCommandHandler(CommandHandler):
 
     @staticmethod
     def _wait_for_sign_in_completion():
+        print('Authentication in progress')
+        spinner = Spinner('Please wait...')
         while LoginCommandHandler.__SignInInprogress:
-            pass  # Wait until we get a completed event from the auth service
+            spinner.next()  # Wait until we get a completed event from the auth service
+        spinner.finish()
 
     def handle(self):
         print(f'Authorization Code Flow intialised at {datetime.datetime.now()}')
-        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_SUCCESS, LoginCommandHandler.on_auth_finished)
+        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
         LoginCommandHandler.__SignInInprogress = True
         _authorizer.AuthorizerService.login()
         self._wait_for_sign_in_completion()

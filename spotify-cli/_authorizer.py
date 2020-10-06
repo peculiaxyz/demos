@@ -62,10 +62,13 @@ class SpotifyToken:
     @property
     def has_expired(self):
         elapsed_seconds = (self.last_refreshed - datetime.now()).seconds
+        print('Has expired elapsed seconds,', elapsed_seconds)
         return elapsed_seconds >= self.expires_in
 
     @property
     def is_authenticated(self):
+        print('Is authed property. Access token', self.access_token)
+        print('Has expired', self.has_expired)
         return self.access_token not in (None, '') and self.has_expired is False
 
     def has_scopes(self, scopes: str):
@@ -87,7 +90,13 @@ class SpotifyToken:
 
 
 class AuthorizerService:
+    CurrentUserEmail = 'todo@spotify.com'
     __credentials = None
+
+    @staticmethod
+    def set_credentials(credentials: SpotifyToken):
+        AuthorizerService.__credentials = credentials
+        return AuthorizerService.__credentials
 
     @staticmethod
     def _load_credentials_from_file():
@@ -114,8 +123,11 @@ class AuthorizerService:
     @staticmethod
     def is_logged_in():
         if AuthorizerService.get_user_credentials() is None:
+            print('Credent object is None. is logged in = false')
             return False
-        return AuthorizerService.get_user_credentials().is_authenticated
+        is_authenticated = AuthorizerService.get_user_credentials().is_authenticated
+        print('Is authenticated', is_authenticated)
+        return is_authenticated
 
     @staticmethod
     def check_scopes(scopes, request_required_scope=True):
@@ -127,13 +139,17 @@ class AuthorizerService:
 
     @staticmethod
     def login(scopes=DEFAULT_SCOPES):
+        print('Check if user is already logged in...')
+        if AuthorizerService.is_logged_in():
+            print(f'Already logged in as..{AuthorizerService.CurrentUserEmail}')
+            return 0
         auth_req_params = {'response_type': 'code',
                            'client_id': os.getenv('CLIENT_ID'),
                            'redirect_uri': os.getenv('REDIRECT_URI'),
                            'scope': scopes,
                            'state': 'anythingRandom',
                            'show_dialog': 'true'}
-        auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL + urllib.urlencode(auth_req_params)
+        auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL.value + urllib.urlencode(auth_req_params)
         webbrowser.open_new_tab(auth_url)
         AuthorizationServer.start()
 
@@ -210,6 +226,7 @@ def _save_access_token(json_response):
     with open(os.getenv('CREDENTIALS_STORE'), 'w') as json_file:
         json.dump(token_object.to_dict(), json_file, indent=4)
         print('Security info succcessfully stored.')
+        return token_object
 
 
 def _notify_auth_started():
@@ -261,9 +278,10 @@ def _on_auth_code_received():
             'client_secret': os.getenv('CLIENT_SECRET'),
             'redirect_uri': os.getenv('REDIRECT_URI')
             }
-    response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL, data=body)
+    response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL.value, data=body)
     if response.status_code == HTTPStatus.OK:
-        _save_access_token(response.json())
+        saved_credentials = _save_access_token(response.json())
+        AuthorizerService.set_credentials(saved_credentials)
         _notify_auth_completed(has_error=False)
         return 0
     raise _shared_mod.SpotifyAuthenticationError(AUTHENTICATION_ERROR % (response.status_code, response.text))
