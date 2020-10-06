@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 
 class AppConfig:
@@ -13,6 +14,19 @@ class InvalidCommandError(Exception):
 
 class InvalidCommandHandlerError(Exception):
     pass
+
+
+class NotLoggedInError(Exception):
+    def __str__(self):
+        return 'You need to be loggen in order to execute this command. Use `spt login` to login'
+
+
+class MissingScopesError(Exception):
+    def __init__(self, mising_scope: Union[str, list, tuple]):
+        self.scopes = mising_scope
+
+    def __str__(self):
+        return f'The following scopes required to execute the comand are missing. {self.scopes}.'
 
 
 # endregion

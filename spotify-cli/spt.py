@@ -4,9 +4,18 @@ import abc
 import argparse
 import sys
 import traceback
+from dataclasses import dataclass
 from typing import Type
 
+import _authorizer
 import _shared_mod
+
+# Shared parser - stores shared options
+common_fetch_parser = argparse.ArgumentParser(add_help=False)
+common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help='The maximum number of objects to '
+                                                                                 'return. Default: 20. Minimum: 1. '
+                                                                                 'Maximum: 50')
+common_fetch_parser.add_argument('--offset', '-o', default=0, dest='offset', help='Index of the first object to return')
 
 # Top-level/Parent parser
 parser = argparse.ArgumentParser(prog='Interact with the Spotify Web API via the command line')
@@ -20,7 +29,17 @@ library_parser.add_argument('--limit', '-l', default=30, dest='limit', type=int,
 
 # [Spotify] Personalisation API subparser
 personalisation_parser = subparsers.add_parser('personalise', help='Get the current user’s top artists or tracks ')
-personalisation_parser.add_argument('--baz', choices='XYZ', help='baz help')
+personalize_subparsers = personalisation_parser.add_subparsers()
+
+get_users_favourites_parser = personalize_subparsers.add_parser('GetTopArtists',
+                                                                parents=[common_fetch_parser],
+                                                                help="Example: spt personalise GetTopArtists")
+get_users_favourites_parser.add_argument('--time', '-tr',
+                                         dest='time_range',
+                                         default='medium_term',
+                                         choices=['long_term', 'medium_term', 'short_term'],
+                                         help='Time range, i.e. medium term(6 months), short term(4 weeks)'
+                                              ' or long term(several years)')
 
 
 # region Command handlers
@@ -29,9 +48,31 @@ class CommandHandler(abc.ABC):
     def __init__(self, context_object):
         self._Context = context_object
 
+    @staticmethod
+    def handle_missing_scopes_error(scopes):
+        response = input('Would you like to request the required scopes? [Y or N]')
+        if str(response) not in ('Y', 'y', 'yes'):
+            return 0
+        print('Initiating a request to get additional scopes: ', scopes)
+        _authorizer.AuthorizerService.login(scopes)
+
     @abc.abstractmethod
     def handle(self):
         pass
+
+    def execute(self):
+        try:
+            return self.handle()
+        except _shared_mod.NotLoggedInError:
+            print(traceback.format_exc())
+
+        except _shared_mod.MissingScopesError as ex:
+            print(traceback.format_exc())
+            self.handle_missing_scopes_error(ex.scopes)
+        except Exception as ex:
+            print(f'[ {self.__name__} - execute encountered an unexpected error ]')
+            print(ex)
+            traceback.print_exc()
 
 
 class LoginCommandHandler(CommandHandler):
@@ -44,9 +85,40 @@ class LibraryCommandHandler(CommandHandler):
         print('Library API handler intialised')
 
 
+@dataclass
+class PersonaliseCommandArgs:
+    entity_type = ''
+    time_range: str = ''
+    limit = 0
+    offset = 0
+
+
 class PersonalisationCommandHandler(CommandHandler):
+    def __init__(self, context_object):
+        super().__init__(context_object)
+        self._args = self._populate_args()
+        self._func_command_map = {
+            'GetTopArtists': self._get_top_artists
+        }
+
+    def _populate_args(self):
+        self._args = PersonaliseCommandArgs()
+        self._args.time_range = self._Context.time_range
+        self._args.offset = self._Context.offset
+        self._args.limit = self._Context.limit
+        return self._args
+
+    def _get_top_artists(self):
+        print('Finding your top artists')
+
     def handle(self):
-        print('Personalisation API handler intialised')
+        function_name = sys.argv[2]
+        print(f'Personalisation API handler intialised. Function to call: {function_name}')
+        func = self._func_command_map.get(function_name)
+        if func is None:
+            raise _shared_mod.InvalidCommandError(f'[{PersonalisationCommandHandler.__name__}] - '
+                                                  f'Command {function_name} is invalid or not supported')
+        return func()
 
 
 # endregion
@@ -79,7 +151,7 @@ class CommandDispatcher:
         command_handler = self._retrive_command_handler(selected_command)
         handler_context = self._parser.parse_args()
         handlder_obj = command_handler(handler_context)
-        handlder_obj.handle()
+        handlder_obj.execute()
 
 
 def main():

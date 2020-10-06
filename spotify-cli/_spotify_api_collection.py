@@ -54,18 +54,20 @@ class RequestExecutorBase(abc.ABC):
         self._body[key] = value
         return self._body[key]
 
-    def authorization_rquest(self):
-        _authorizer.AuthorizerService.login()
-        _authorizer.AuthorizerService.check_scopes(self._scopes)
+    def check_authorization(self):
+        if _authorizer.AuthorizerService.is_logged_in() is False:
+            raise _shared_mod.NotLoggedInError
+
+        if _authorizer.AuthorizerService.check_scopes(self._scopes) is False:
+            raise _shared_mod.MissingScopesError(self._scopes)
 
     @abc.abstractmethod
     def execute_request(self):
         pass
 
     def execute(self):
-        self.authorization_rquest()
-        self.execute()
-        return {}
+        self.check_authorization()
+        return self.execute_request()
 
 
 class GetRequestExecutor(RequestExecutorBase):
