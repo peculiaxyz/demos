@@ -9,7 +9,7 @@ from typing import Type
 import _shared_mod
 
 # Top-level/Parent parser
-parser = argparse.ArgumentParser(prog='Interacts with the Spotify Web API via the command line')
+parser = argparse.ArgumentParser(prog='Interact with the Spotify Web API via the command line')
 subparsers = parser.add_subparsers(help='Typical usage: spt <subcommand> [subcomand options]')
 
 # [Spotify] Library API subparser
@@ -24,6 +24,7 @@ personalisation_parser.add_argument('--baz', choices='XYZ', help='baz help')
 
 
 # region Command handlers
+
 class CommandHandler(abc.ABC):
     def __init__(self, context_object):
         self._Context = context_object
@@ -33,6 +34,21 @@ class CommandHandler(abc.ABC):
         pass
 
 
+class LoginCommandHandler(CommandHandler):
+    def handle(self):
+        print('Authorization flow intialised')
+
+
+class LibraryCommandHandler(CommandHandler):
+    def handle(self):
+        print('Library API handler intialised')
+
+
+class PersonalisationCommandHandler(CommandHandler):
+    def handle(self):
+        print('Personalisation API handler intialised')
+
+
 # endregion
 
 
@@ -40,13 +56,13 @@ class CommandDispatcher:
     def __init__(self, parser_obj: argparse.ArgumentParser):
         self._parser = parser_obj
         self._command_handler_map = {
-            'login': '',
-            'library': '',
-            'personalise': ''
+            'login': LoginCommandHandler,
+            'library': LibraryCommandHandler,
+            'personalise': PersonalisationCommandHandler
         }
 
     def _retrive_subcommand(self):
-        print('Retrieving selected command from the arguments')
+        print('Retrieving selected command from the arguments: ', sys.argv)
         selected_command = str(sys.argv[1]).strip().lower()
         if selected_command not in self._command_handler_map.keys():
             raise _shared_mod.InvalidCommandError(f'Invalid or unsurpoted command | {selected_command} |')
@@ -74,6 +90,10 @@ def main():
     except _shared_mod.InvalidCommandError:
         print(traceback.format_exc())
         parser.print_help()
+    except Exception as e:
+        print('A critical error had occured. The app will now close...')
+        print(e)
+        print(traceback.format_exc())
 
 
 if __name__ == '__main__':
