@@ -10,7 +10,8 @@ from progress.spinner import Spinner
 
 import _authorizer
 import _shared_mod
-import _spotify_api_collection as spotify
+import _spotify_web_api as spotify
+from _logger import default_logger as log
 
 # region Parser Configuration
 
@@ -61,14 +62,15 @@ class CommandHandler(abc.ABC):
 
     @staticmethod
     def handle_missing_scopes_error(scopes):
-        response = input('Would you like to request the required scopes? [Y or N]')
+        response = input('Would you like to request additional scopes [Y or N]?    ')
         if str(response) not in ('Y', 'y', 'yes'):
-            return 0
-        print('Initiating a request to get additional scopes: ', scopes)
+            return
+        log.info('Initiating request to get additional scopes: ', scopes)
         if isinstance(scopes, list):
             scopes = ' '.join(scopes).strip()
 
-        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
+        _authorizer.AuthorizerService.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED,
+                                                         LoginCommandHandler.on_auth_finished)
         _authorizer.AuthorizerService.get_more_scopes(new_scopes=scopes)
 
     @abc.abstractmethod
@@ -79,16 +81,15 @@ class CommandHandler(abc.ABC):
         try:
             return self.handle()
         except _shared_mod.NotLoggedInError:
-            print(traceback.format_exc())
+            log.error(traceback.format_exc())
         except _shared_mod.MissingScopesError as ex:
-            print(traceback.format_exc())
+            log.error(traceback.format_exc())
             self.handle_missing_scopes_error(ex.scopes)
         except _shared_mod.SpotifyAPICallError:
-            print(traceback.format_exc())
+            log.error(traceback.format_exc())
         except Exception as ex:
-            print(f'[ {type(self).__name__} - execute encountered an unexpected error ]')
-            print(ex)
-            traceback.print_exc()
+            log.error(f'[ {type(self).__name__} - handle() encountered an unexpected error. {ex}.')
+            log.debug(traceback.format_exc())
 
 
 class LoginCommandHandler(CommandHandler):
