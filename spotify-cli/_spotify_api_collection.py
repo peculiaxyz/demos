@@ -1,4 +1,8 @@
 import abc
+import json
+import urllib.parse as urllib
+from datetime import datetime
+from http import HTTPStatus
 from typing import List
 
 import requests
@@ -61,6 +65,9 @@ class RequestExecutorBase(abc.ABC):
         if _authorizer.AuthorizerService.check_scopes(self._scopes) is False:
             raise _shared_mod.MissingScopesError(self._scopes)
 
+    def _add_authorization_header(self):
+        self._headers['Authorization'] = f'Bearer {_authorizer.AuthorizerService.get_access_token()}'
+
     @abc.abstractmethod
     def execute_request(self):
         pass
@@ -68,6 +75,7 @@ class RequestExecutorBase(abc.ABC):
     def execute(self):
         try:
             self.check_authorization()
+            self._add_authorization_header()
             return self.execute_request()
         except _shared_mod.NotLoggedInError:
             raise
@@ -82,9 +90,18 @@ class GetRequestExecutor(RequestExecutorBase):
         super().__init__(request_url, scopes)
 
     def execute_request(self):
+        start_time = datetime.now()
+        full_url = self._requet_url + urllib.urlencode(self._params)
+        print(f'[{start_time}] Initialising get request to {full_url}')
         response = requests.get(self._requet_url,
                                 headers=self._headers,
                                 params=self._params)
+        if not response.status_code == HTTPStatus.OK:
+            raise _shared_mod.SpotifyAPICallError(f'Get request failed. HTTPStatus = {response.status_code}.'
+                                                  f'\n{response.text}')
+        end_time = datetime.now()
+        print(f'[{end_time}] Get request successfuly processed. HTTPStatus={response.status_code}.'
+              f' Elapsed time = {(end_time - start_time).total_seconds()} seconds')
         return response
 
 
@@ -95,6 +112,11 @@ class SpotifyAPIBase:
 
     def get_fullname(self, func_name: str):
         return type(self).__name__ + func_name
+
+    @staticmethod
+    def pretify_json(json_data):
+        pretty = json.dumps(json_data, indent=4)
+        return pretty
 
 
 class UserProfileAPI(SpotifyAPIBase):
@@ -124,7 +146,7 @@ class PersonalisationAPI(SpotifyAPIBase):
         super().__init__()
         self._params = params
         self.RequiredScopes = [
-            _shared_mod.SpotifyScope.READ_TOP
+            _shared_mod.SpotifyScope.READ_TOP.value
         ]
 
     def get_top_tracks_and_artists(self):
@@ -138,7 +160,7 @@ class PersonalisationAPI(SpotifyAPIBase):
                                  scopes=self.RequiredScopes)
         req.params = url_params
         json_response = req.execute()
-        return json_response
+        return json_response.json()
 
 
 class LibraryAPI(SpotifyAPIBase):

@@ -10,6 +10,7 @@ from typing import Type
 import dotenv
 from progress.spinner import Spinner
 
+import _app_config
 import _authorizer
 import _shared_mod
 import _spotify_api_collection as spotify
@@ -67,6 +68,10 @@ class CommandHandler(abc.ABC):
         if str(response) not in ('Y', 'y', 'yes'):
             return 0
         print('Initiating a request to get additional scopes: ', scopes)
+        if isinstance(scopes, list):
+            scopes = ' '.join(scopes).strip()
+
+        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
         _authorizer.AuthorizerService.get_more_scopes(new_scopes=scopes)
 
     @abc.abstractmethod
@@ -145,7 +150,7 @@ class PersonalisationCommandHandler(CommandHandler):
         api = spotify.PersonalisationAPI(params=self._args)
         json_response = api.get_top_tracks_and_artists()
         print()
-        print(json_response)
+        print(spotify.PersonalisationAPI.pretify_json(json_response))
 
     def handle(self):
         function_name = sys.argv[2]
@@ -194,6 +199,7 @@ class BootStrapper:
     @staticmethod
     def execute():
         dotenv.load_dotenv()
+        _app_config.GlobalConfiguration.initialise()
 
 
 def main():

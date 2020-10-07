@@ -1,5 +1,6 @@
 import dotenv
 import requests
+from flask import Flask
 
 import _authorizer
 
@@ -57,9 +58,25 @@ def main():
     API.get_saved_albums()
 
 
+class TestFlask:
+    app = None
+
+    @staticmethod
+    @app.route('/')
+    def index():
+        return 'I am a default route'
+
+    @staticmethod
+    def start():
+        TestFlask.app = Flask('test')
+        TestFlask.app.run()
+
+
 # Wait for authorization before continuing
 # While true, keep waiting if flow is in progress
 # Eslse intiate a new request
 
 if __name__ == '__main__':
-    main()
+    print('Before start', TestFlask.app)
+    TestFlask.start()
+    print('After start', TestFlask.app)

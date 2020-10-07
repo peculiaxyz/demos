@@ -42,6 +42,22 @@ class SpotifyAuthenticationError(Exception):
     pass
 
 
+class LocalAuthServerStartupError(Exception):
+    def __init__(self, inner_exception: Exception):
+        self._inner_exception = inner_exception
+
+    def __str__(self):
+        return f'Authortization server failed to start\n{self._inner_exception}'
+
+
+class LocalAuthServerShutdownError(Exception):
+    def __init__(self, inner_exception: Exception):
+        self._inner_exception = inner_exception
+
+    def __str__(self):
+        return f'Authortization server failed to shutdown\n{self._inner_exception}'
+
+
 # endregion
 
 
