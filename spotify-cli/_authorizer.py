@@ -9,6 +9,7 @@ import threading
 import traceback
 import typing
 import urllib.parse as urllib
+import uuid
 import webbrowser
 from dataclasses import dataclass
 from datetime import datetime
@@ -92,14 +93,10 @@ class AuthorizerService:
     __current_user_email = 'todo@spotify.com'
     __auth_subscribers = {}
     __credentials = None
+    __state_key = ''
 
     @staticmethod
-    def set_credentials(credentials: SpotifyToken):
-        AuthorizerService.__credentials = credentials
-        return AuthorizerService.__credentials
-
-    @staticmethod
-    def _load_credentials_from_file():
+    def _load_saved_credentials():
         credpath = os.getenv('CREDENTIALS_STORE')
         if not os.path.exists(credpath):
             return None
@@ -165,11 +162,13 @@ class AuthorizerService:
 
     # endregion
 
+    # region Accessor methods
+
     @staticmethod
     def get_user_credentials():
         if AuthorizerService.__credentials is not None:
             return AuthorizerService.__credentials
-        return AuthorizerService._load_credentials_from_file()
+        return AuthorizerService._load_saved_credentials()
 
     @staticmethod
     def get_access_token():
@@ -195,19 +194,23 @@ class AuthorizerService:
             pass
         return has_scopes
 
+    # endregion
+
     @staticmethod
     def login(scopes=DEFAULT_SCOPES):
         if AuthorizerService.is_logged_in():
             log.info(f'Already logged in as..{AuthorizerService.__current_user_email}')
             AuthorizerService.notify_auth_completed(has_error=False)
             return False
+        AuthorizerService.__state_key = uuid.uuid4()
         auth_req_params = {'response_type': 'code',
                            'client_id': os.getenv('CLIENT_ID'),
                            'redirect_uri': os.getenv('REDIRECT_URI'),
                            'scope': scopes,
-                           'state': 'anythingRandom',
+                           'state': str(AuthorizerService.__state_key),
                            'show_dialog': 'true'}
         auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL.value + urllib.urlencode(auth_req_params)
+        log.debug(f'Sending Authentication request to..{auth_url}')
         webbrowser.open_new_tab(auth_url)
         AuthorizationServer.start()
         return True
@@ -215,18 +218,20 @@ class AuthorizerService:
     @staticmethod
     def get_more_scopes(new_scopes: str):
         if AuthorizerService.is_logged_in() is False:
-            raise _shared_mod.InvalidOperationError('You must be logged-in to request more scopes. '
-                                                    'Use `spotify login` to authenticate')
+            raise _shared_mod.InvalidOperationError('You must be logged-in in order to request more scopes. ')
+
         existing_scopes = AuthorizerService.get_user_credentials().scopes
         scopes = f'{existing_scopes.strip()} {new_scopes.strip()}'
+        AuthorizerService.__state_key = uuid.uuid4()
 
         auth_req_params = {'response_type': 'code',
                            'client_id': os.getenv('CLIENT_ID'),
                            'redirect_uri': os.getenv('REDIRECT_URI'),
                            'scope': scopes,
-                           'state': 'anythingRandom',
+                           'state': str(AuthorizerService.__state_key),
                            'show_dialog': 'true'}
         auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL.value + urllib.urlencode(auth_req_params)
+        log.debug(f'Sending Authentication request to..{auth_url}')
         webbrowser.open_new_tab(auth_url)
         AuthorizationServer.start()
 
