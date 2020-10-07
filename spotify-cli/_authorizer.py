@@ -1,4 +1,4 @@
-"""Handler for Spotify Authorization Flow Callback Requests"""
+"""Handles Spotify Authorization Code Flow"""
 
 __author__ = 'N Nemakhavhani'
 __all__ = ['AuthorizerService', 'AuthorizationServer', 'AuthEvent', 'AuthServerStatus']

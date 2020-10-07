@@ -1,195 +1,45 @@
-"""Read the command line options and map the map the selected subcommand to the appropriate worker class"""
+__author__ = 'N Nemakhavhani'
 
-import abc
 import argparse
-import datetime
 import sys
 import traceback
-from typing import Type
+import typing
 
 import dotenv
-from progress.spinner import Spinner
 
 import _app_config
-import _authorizer
+import _cli_parser as cli
 import _shared_mod
-import _spotify_api_collection as spotify
-
-# region Parser Configuration
-
-# Shared parser - stores shared options
-
-common_fetch_parser = argparse.ArgumentParser(add_help=False)
-common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help='The maximum number of objects to '
-                                                                                 'return. Default: 20. Minimum: 1. '
-                                                                                 'Maximum: 50')
-common_fetch_parser.add_argument('--offset', '-o', default=0, dest='offset', help='Index of the first object to return')
-
-# Top-level/Parent parser
-parser = argparse.ArgumentParser(prog='Interact with the Spotify Web API via the command line')
-subparsers = parser.add_subparsers(help='Typical usage: spt <subcommand> [subcomand options]')
-
-# [Spotify] Authentication subparser
-login_parser = subparsers.add_parser('login', help='Authenticate against Spotify Web API using OAuth')
-
-# [Spotify] Library API subparser
-library_parser = subparsers.add_parser('library', help='Get current users saved tracks, shows, albums etc.'
-                                                       'Example: spt library GetSavedAlbums')
-library_parser.add_argument('--limit', '-l', default=30, dest='limit', type=int,
-                            help='Maximum no. of results per query')
-
-# [Spotify] Personalisation API subparser
-personalisation_parser = subparsers.add_parser('personalise', help='Get the current user’s top artists or tracks ')
-personalize_subparsers = personalisation_parser.add_subparsers()
-
-get_users_favourites_parser = personalize_subparsers.add_parser('GetTopArtists',
-                                                                parents=[common_fetch_parser],
-                                                                help="Example: spt personalise GetTopArtists")
-get_users_favourites_parser.add_argument('--time', '-tr',
-                                         dest='time_range',
-                                         default='medium_term',
-                                         choices=['long_term', 'medium_term', 'short_term'],
-                                         help='Time range, i.e. medium term(6 months), short term(4 weeks)'
-                                              ' or long term(several years)')
-
-
-# endregion
-
-
-# region Command handlers
-
-class CommandHandler(abc.ABC):
-    def __init__(self, context_object):
-        self._Context = context_object
-
-    @staticmethod
-    def handle_missing_scopes_error(scopes):
-        response = input('Would you like to request the required scopes? [Y or N]')
-        if str(response) not in ('Y', 'y', 'yes'):
-            return 0
-        print('Initiating a request to get additional scopes: ', scopes)
-        if isinstance(scopes, list):
-            scopes = ' '.join(scopes).strip()
-
-        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
-        _authorizer.AuthorizerService.get_more_scopes(new_scopes=scopes)
-
-    @abc.abstractmethod
-    def handle(self):
-        pass
-
-    def execute(self):
-        try:
-            return self.handle()
-        except _shared_mod.NotLoggedInError:
-            print(traceback.format_exc())
-        except _shared_mod.MissingScopesError as ex:
-            print(traceback.format_exc())
-            self.handle_missing_scopes_error(ex.scopes)
-        except _shared_mod.SpotifyAPICallError:
-            print(traceback.format_exc())
-        except Exception as ex:
-            print(f'[ {type(self).__name__} - execute encountered an unexpected error ]')
-            print(ex)
-            traceback.print_exc()
-
-
-class LoginCommandHandler(CommandHandler):
-    __SignInInprogress = False
-
-    @staticmethod
-    def on_auth_finished(has_error: bool):
-        print(f'Handle Auth Completed Event. Has Error = {has_error} ')
-        LoginCommandHandler.__SignInInprogress = False
-        if has_error:
-            print('Authorization flow completed with errors. Please try again')
-            return -1
-        _authorizer.AuthorizationServer.shutdown()
-        return 0
-
-    @staticmethod
-    def _wait_for_sign_in_completion():
-        print('Authentication in progress')
-        spinner = Spinner('Please wait...')
-        while LoginCommandHandler.__SignInInprogress:
-            spinner.next()  # Wait until we get a completed event from the auth service
-        spinner.finish()
-
-    def handle(self):
-        print(f'Authorization Code Flow intialised at {datetime.datetime.now()}')
-        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
-        LoginCommandHandler.__SignInInprogress = True
-        login_in_progress = _authorizer.AuthorizerService.login()
-        if login_in_progress:
-            self._wait_for_sign_in_completion()
-
-
-class LibraryCommandHandler(CommandHandler):
-    def handle(self):
-        print('Library API handler intialised')
-
-
-class PersonalisationCommandHandler(CommandHandler):
-    def __init__(self, context_object):
-        super().__init__(context_object)
-        self._args = self._populate_args()
-        self._func_command_map = {
-            'GetTopArtists': self._get_top_artists
-        }
-
-    def _populate_args(self):
-        self._args = _shared_mod.PersonlisationParams()
-        self._args.time_range = self._Context.time_range
-        self._args.offset = self._Context.offset
-        self._args.limit = self._Context.limit
-        return self._args
-
-    def _get_top_artists(self):
-        print('Finding your top artists..')
-        self._args.entity_type = 'artists'
-        api = spotify.PersonalisationAPI(params=self._args)
-        json_response = api.get_top_tracks_and_artists()
-        print()
-        print(spotify.PersonalisationAPI.pretify_json(json_response))
-
-    def handle(self):
-        function_name = sys.argv[2]
-        print(f'Personalisation API handler intialised. Function to call: {function_name}')
-        func = self._func_command_map.get(function_name)
-        if func is None:
-            raise _shared_mod.InvalidCommandError(f'[{PersonalisationCommandHandler.__name__}] - '
-                                                  f'Command {function_name} is invalid or not supported')
-        return func()
-
-
-# endregion
+from _logger import default_logger as log
 
 
 class CommandDispatcher:
     def __init__(self, parser_obj: argparse.ArgumentParser):
         self._parser = parser_obj
         self._command_handler_map = {
-            'login': LoginCommandHandler,
-            'library': LibraryCommandHandler,
-            'personalise': PersonalisationCommandHandler
+            'login': cli.LoginCommandHandler,
+            'library': cli.LibraryCommandHandler,
+            'personalise': cli.PersonalisationCommandHandler
         }
 
-    def _retrive_subcommand(self):
-        print('Retrieving selected command from the arguments: ', sys.argv)
-        selected_command = str(sys.argv[1]).strip().lower()
-        if selected_command not in self._command_handler_map.keys():
-            raise _shared_mod.InvalidCommandError(f'Invalid or unsurpoted command | {selected_command} |')
-        return selected_command
+    def _extract_subcommand_from_stdin(self):
+        log.debug('Extracting command to execute from STDIN: ', sys.argv)
+        subcommand = str(sys.argv[1]).strip().lower()
+        if subcommand not in self._command_handler_map.keys():
+            raise _shared_mod.InvalidCommandError(f'Invalid or unsurpoted command | {subcommand} |')
+        return subcommand
 
-    def _retrive_command_handler(self, command: str) -> Type[CommandHandler]:
-        handler_cls = self._command_handler_map.get(command)
-        if not issubclass(handler_cls, CommandHandler):
-            raise _shared_mod.InvalidCommandHandlerError(f'Handler must be a subclass of {CommandHandler.__name__}')
-        return handler_cls
+    def _get_command_handler(self, command: str) -> typing.Type[cli.CommandHandler]:
+        handler_class = self._command_handler_map.get(command)
+        if not issubclass(handler_class, cli.CommandHandler):
+            raise _shared_mod.InvalidCommandHandlerError(f'Handler must be a subclass of {cli.CommandHandler.__name__}')
+        log.debug(f'Found handler {handler_class.__name__} for  command {command}')
+        return handler_class
 
     def execute(self):
-        selected_command = self._retrive_subcommand()
-        command_handler = self._retrive_command_handler(selected_command)
+        log.debug('Executing CommandDispatcher')
+        selected_command = self._extract_subcommand_from_stdin()
+        command_handler = self._get_command_handler(selected_command)
         handler_context = self._parser.parse_args()
         handlder_obj = command_handler(handler_context)
         handlder_obj.execute()
@@ -198,23 +48,26 @@ class CommandDispatcher:
 class BootStrapper:
     @staticmethod
     def execute():
+        log.debug('Executing BootStrapper')
         dotenv.load_dotenv()
+        log.debug(' > Enviroment variables loaded')
+
         _app_config.GlobalConfiguration.initialise()
+        log.debug(' > Global configuration loaded')
 
 
 def main():
     try:
-        print('Initialise spt CLI..')
+        log.info('Spotify CLI. @Copyright 2020')
         BootStrapper.execute()
-        cmd_dispatcher = CommandDispatcher(parser_obj=parser)
+        cmd_dispatcher = CommandDispatcher(parser_obj=cli.main_cli_parser)
         cmd_dispatcher.execute()
     except _shared_mod.InvalidCommandError:
-        print(traceback.format_exc())
-        parser.print_help()
-    except Exception as e:
-        print('A critical error had occured. The app will now close...')
-        print(e)
-        print(traceback.format_exc())
+        log.debug(traceback.format_exc())
+        cli.main_cli_parser.print_help()
+    except Exception as ex:
+        log.debug(traceback.format_exc())
+        log.error(f'A critical error has occured. {ex}.\nThe app will now close.')
 
 
 if __name__ == '__main__':
