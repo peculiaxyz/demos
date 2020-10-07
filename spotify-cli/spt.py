@@ -94,6 +94,7 @@ class LoginCommandHandler(CommandHandler):
 
     @staticmethod
     def on_auth_finished(has_error: bool):
+        print(f'Handle Auth Completed Event. Has Error = {has_error} ')
         LoginCommandHandler.__SignInInprogress = False
         if has_error:
             print('Authorization flow completed with errors. Please try again')
@@ -113,8 +114,9 @@ class LoginCommandHandler(CommandHandler):
         print(f'Authorization Code Flow intialised at {datetime.datetime.now()}')
         _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
         LoginCommandHandler.__SignInInprogress = True
-        _authorizer.AuthorizerService.login()
-        self._wait_for_sign_in_completion()
+        login_in_progress = _authorizer.AuthorizerService.login()
+        if login_in_progress:
+            self._wait_for_sign_in_completion()
 
 
 class LibraryCommandHandler(CommandHandler):

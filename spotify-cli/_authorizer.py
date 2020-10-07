@@ -61,14 +61,12 @@ class SpotifyToken:
 
     @property
     def has_expired(self):
-        elapsed_seconds = (self.last_refreshed - datetime.now()).seconds
-        print('Has expired elapsed seconds,', elapsed_seconds)
-        return elapsed_seconds >= self.expires_in
+        elapsed_seconds = (self.last_refreshed - datetime.now()).total_seconds()
+        is_token_expired = abs(round(elapsed_seconds)) >= self.expires_in
+        return is_token_expired
 
     @property
     def is_authenticated(self):
-        print('Is authed property. Access token', self.access_token)
-        print('Has expired', self.has_expired)
         return self.access_token not in (None, '') and self.has_expired is False
 
     def has_scopes(self, scopes: str):
@@ -106,7 +104,9 @@ class AuthorizerService:
 
         with open(credpath) as json_file:
             credentials = json.load(json_file)
+            last_refreshed = datetime.strptime(credentials['last_refreshed'], STD_DATETIME_FMT)
             AuthorizerService.__credentials = SpotifyToken.from_json_response(credentials)
+            AuthorizerService.__credentials.last_refreshed = last_refreshed
             return AuthorizerService.__credentials
 
     @staticmethod
@@ -142,7 +142,8 @@ class AuthorizerService:
         print('Check if user is already logged in...')
         if AuthorizerService.is_logged_in():
             print(f'Already logged in as..{AuthorizerService.CurrentUserEmail}')
-            return 0
+            _notify_auth_completed(has_error=False)
+            return False
         auth_req_params = {'response_type': 'code',
                            'client_id': os.getenv('CLIENT_ID'),
                            'redirect_uri': os.getenv('REDIRECT_URI'),
@@ -152,6 +153,7 @@ class AuthorizerService:
         auth_url = _shared_mod.SpotifyEndPoints.AUTHORIZE_URL.value + urllib.urlencode(auth_req_params)
         webbrowser.open_new_tab(auth_url)
         AuthorizationServer.start()
+        return True
 
     @staticmethod
     def get_more_scopes(new_scopes: str):
@@ -194,6 +196,8 @@ class AuthorizationServer:
 
     @staticmethod
     def shutdown():
+        if AuthorizationServer.__status == AuthServerStatus.STOPPED:
+            return AuthorizationServer.__status
         AuthorizationServer._shutdown_dev_server()
         AuthorizationServer.__status = AuthServerStatus.STOPPED
         print('Authorizer server status = %s at %s' % (AuthorizationServer.__status, datetime.now()))
