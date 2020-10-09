@@ -90,15 +90,22 @@ class SpotifyAuthSections(Enum):
     SCOPE = 'scope'
 
 
+class PersonalisationEntityTypes(Enum):
+    Artists = 'artists'
+    Tracks = 'tracks'
 # endregion
 
 
 # region Spotify Request Param Objects
 @dataclass
-class PersonlisationParams(object):
+class PersonlisationParams:
     entity_type = ''
     time_range: str = ''
     limit = 0
     offset = 0
 
+
+@dataclass
+class UserLibraryParams:
+    pass
 # region

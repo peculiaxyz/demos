@@ -3,11 +3,12 @@ import os
 
 
 class GlobalConfiguration:
+    __config_store = 'appconfig.json'
     __json_config = {}
 
     @staticmethod
     def initialise():
-        with open(os.getenv('GLOBAL_CONFIGURATION')) as config:
+        with open(os.getenv('GLOBAL_CONFIGURATION', GlobalConfiguration.__config_store)) as config:
             GlobalConfiguration.__json_config = json.load(config)
             return GlobalConfiguration.__json_config
 

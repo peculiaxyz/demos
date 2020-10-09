@@ -1,5 +1,3 @@
-__author__ = 'N Nemakhavhani'
-
 import abc
 import argparse
 import datetime
@@ -97,25 +95,25 @@ class LoginCommandHandler(CommandHandler):
 
     @staticmethod
     def on_auth_finished(has_error: bool):
-        print(f'Handle Auth Completed Event. Has Error = {has_error} ')
+        log.debug(f'Handle Auth Completed Event. Has Errors = {has_error} ')
         LoginCommandHandler.__SignInInprogress = False
         if has_error:
-            print('Authorization flow completed with errors. Please try again')
+            log.warn('Authorization flow completed with errors. Please try again')
             return -1
-        _authorizer.AuthorizationServer.shutdown()
         return 0
 
     @staticmethod
     def _wait_for_sign_in_completion():
-        print('Authentication in progress')
+        log.info('Authentication in progress')
         spinner = Spinner('Please wait...')
         while LoginCommandHandler.__SignInInprogress:
             spinner.next()  # Wait until we get a completed event from the auth service
         spinner.finish()
 
     def handle(self):
-        print(f'Authorization Code Flow intialised at {datetime.datetime.now()}')
-        _authorizer.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED, LoginCommandHandler.on_auth_finished)
+        log.info(f'Authorization Code Flow intialised at {datetime.datetime.now()}')
+        _authorizer.AuthorizerService.add_auth_subsciber(_authorizer.AuthEvent.AUTH_COMPLETED,
+                                                         LoginCommandHandler.on_auth_finished)
         LoginCommandHandler.__SignInInprogress = True
         login_in_progress = _authorizer.AuthorizerService.login()
         if login_in_progress:
@@ -132,7 +130,8 @@ class PersonalisationCommandHandler(CommandHandler):
         super().__init__(context_object)
         self._args = self._populate_args()
         self._func_command_map = {
-            'GetTopArtists': self._get_top_artists
+            'GetTopArtists': self._get_top_artists,
+            'GetTopTracks': self._get_top_tracks
         }
 
     def _populate_args(self):
@@ -143,8 +142,16 @@ class PersonalisationCommandHandler(CommandHandler):
         return self._args
 
     def _get_top_artists(self):
-        print('Finding your top artists..')
-        self._args.entity_type = 'artists'
+        log.info('Finding your top artists..')
+        self._args.entity_type = _shared_mod.PersonalisationEntityTypes.Artists.value
+        api = spotify.PersonalisationAPI(params=self._args)
+        json_response = api.get_top_tracks_and_artists()
+        print()
+        print(spotify.PersonalisationAPI.pretify_json(json_response))
+
+    def _get_top_tracks(self):
+        log.info('Finding your top tracks..')
+        self._args.entity_type = _shared_mod.PersonalisationEntityTypes.Tracks.value
         api = spotify.PersonalisationAPI(params=self._args)
         json_response = api.get_top_tracks_and_artists()
         print()
@@ -152,7 +159,7 @@ class PersonalisationCommandHandler(CommandHandler):
 
     def handle(self):
         function_name = sys.argv[2]
-        print(f'Personalisation API handler intialised. Function to call: {function_name}')
+        log.debug(f'Personalisation API handler intialised. Function to call: {function_name}')
         func = self._func_command_map.get(function_name)
         if func is None:
             raise _shared_mod.InvalidCommandError(f'[{PersonalisationCommandHandler.__name__}] - '

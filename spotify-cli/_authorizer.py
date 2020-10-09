@@ -1,7 +1,9 @@
 """Handles Spotify Authorization Code Flow"""
 
-__author__ = 'N Nemakhavhani'
 __all__ = ['AuthorizerService', 'AuthorizationServer', 'AuthEvent', 'AuthServerStatus']
+__author__ = 'N Nemakhavhani'
+__version__ = '1.0.0'
+__licencse__ = 'MIT'
 
 import json
 import os
@@ -28,6 +30,7 @@ DEFAULT_SCOPES = ' '.join([_shared_mod.SpotifyScope.READ_PRIVATE.value,
                            _shared_mod.SpotifyScope.READ_LIBRARY.value])
 STD_DATETIME_FMT = '%Y%m%d_%H:%M:%S'
 AUTHENTICATION_ERROR = 'Authorization code not received.\nError Code: Http %s.\nError Message: %s'
+TOKEN_REFRESH_ERROR = 'Token refresh request failed.\nError Code: Http %s.\nError Message: %s'
 
 
 class AuthEvent(Enum):
@@ -66,6 +69,10 @@ class SpotifyToken:
         elapsed_seconds = (datetime.now() - self.last_refreshed).total_seconds()
         is_token_expired = round(elapsed_seconds) >= self.expires_in
         return is_token_expired
+
+    @property
+    def has_refresh_token(self):
+        return self.refresh_token not in (None, '')
 
     @property
     def is_authenticated(self):
@@ -126,6 +133,9 @@ class AuthorizerService:
             log.debug(f'No subscriibers registered for {AuthEvent.AUTH_COMPLETED} event')
             return
 
+        if not has_error:
+            AuthorizationServer.shutdown()
+
         log.debug(f'Raise {AuthEvent.AUTH_COMPLETED} event. Subscribers {subscriber_list}')
         for event_handler in subscriber_list:
             event_handler(has_error)
@@ -178,10 +188,12 @@ class AuthorizerService:
     @staticmethod
     def is_logged_in():
         if AuthorizerService.get_user_credentials() is None:
-            print('Credent object is None. is logged in = false')
             return False
         is_authenticated = AuthorizerService.get_user_credentials().is_authenticated
-        print('Is authenticated', is_authenticated)
+        if not is_authenticated and AuthorizerService.get_user_credentials().has_expired and \
+                AuthorizerService.get_user_credentials().has_refresh_token:
+            AuthorizerService.refresh_access_token(credentials=AuthorizerService.get_user_credentials())
+            return True
         return is_authenticated
 
     @staticmethod
@@ -235,6 +247,25 @@ class AuthorizerService:
         webbrowser.open_new_tab(auth_url)
         AuthorizationServer.start()
 
+    @staticmethod
+    def refresh_access_token(credentials: SpotifyToken):
+        log.debug('Refreshing access token')
+        body = {'grant_type': 'refresh_token',
+                'refresh_token': credentials.refresh_token,
+                'client_id': os.getenv('CLIENT_ID'),
+                'client_secret': os.getenv('CLIENT_SECRET'),
+                'redirect_uri': os.getenv('REDIRECT_URI')
+                }
+        response: requests.Response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL.value, data=body)
+        if response.status_code == HTTPStatus.OK:
+            log.debug('Access token successfully refreshed')
+            json_res = response.json()
+            json_res['refresh_token'] = credentials.refresh_token  # Spotify doesnt send back refresh token
+            saved_credentials = AuthorizerService._save_credentials(json_res)
+            AuthorizerService.__credentials = saved_credentials
+            return AuthorizerService.__credentials
+        raise _shared_mod.SpotifyAuthenticationError(TOKEN_REFRESH_ERROR % (response.status_code, response.text))
+
 
 class AuthorizationServer:
     app = flask.Flask(cfg.GlobalConfiguration.get_app_name())
@@ -259,7 +290,7 @@ class AuthorizationServer:
     @staticmethod
     def _start():
         host_ip, host_port = os.getenv('HOST_IP'), os.getenv('HOST_PORT')
-        log.info(f'Starting Authorization Server at {host_ip}:{host_port}')
+        log.debug(f'Starting Authorization Server at {host_ip}:{host_port}')
         AuthorizationServer.app.run(host_ip, host_port)
         AuthorizerService.__status = AuthServerStatus.RUNNING
         return AuthorizationServer.__status
@@ -302,14 +333,14 @@ class AuthorizationServer:
     @staticmethod
     def shutdown():
         try:
-            log.info('Shutdown Authorization Sever signal received')
+            log.debug('Shutdown Authorization Sever signal received')
             if AuthorizationServer.__status == AuthServerStatus.STOPPED:
-                log.info('Server not running. Ignoring shutdown signal')
+                log.debug('Server not running. Ignoring shutdown signal')
                 return AuthorizationServer.__status
 
             AuthorizationServer._shutdown_dev_server()
             AuthorizationServer.__status = AuthServerStatus.STOPPED
-            log.info('Authorization Sever shutdown successful.')
+            log.debug('Authorization Sever shutdown successful.')
             return AuthorizationServer.__status
         except Exception as ex:
             raise _shared_mod.LocalAuthServerShutdownError(ex)

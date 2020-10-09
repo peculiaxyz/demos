@@ -1,4 +1,7 @@
+__all__ = ['main']
 __author__ = 'N Nemakhavhani'
+__version__ = '1.0.0'
+__licencse__ = 'MIT'
 
 import argparse
 import sys
