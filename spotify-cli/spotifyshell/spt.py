@@ -3,10 +3,9 @@ import sys
 import traceback
 import typing
 
-import dotenv
-
 import _app_config
 import _cli_parser as cli
+import _env_manager
 import _shared_mod
 from _logger import default_logger as log
 
@@ -49,7 +48,7 @@ class BootStrapper:
     @staticmethod
     def execute():
         log.debug('Executing BootStrapper')
-        dotenv.load_dotenv()
+        _env_manager.EnvironmentManager.initialise()
         log.debug(' > Enviroment variables loaded')
 
         _app_config.GlobalConfiguration.initialise()
