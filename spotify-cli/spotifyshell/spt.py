@@ -1,18 +1,16 @@
-__all__ = ['main']
-__author__ = 'N Nemakhavhani'
-__version__ = '1.0.0'
-__licencse__ = 'MIT'
-
 import argparse
 import sys
 import traceback
 import typing
 
+import dotenv
+
 import _app_config
 import _cli_parser as cli
 import _shared_mod
-import dotenv
 from _logger import default_logger as log
+
+__all__ = ['main']
 
 
 class CommandDispatcher:
@@ -60,7 +58,7 @@ class BootStrapper:
 
 def main():
     try:
-        log.info('Spotify Shell. @Copyright 2020')
+        log.info(_shared_mod.APP_INFO_LOG)
         BootStrapper.execute()
         cmd_dispatcher = CommandDispatcher(parser_obj=cli.main_cli_parser)
         cmd_dispatcher.execute()
@@ -69,7 +67,7 @@ def main():
         cli.main_cli_parser.print_help()
     except Exception as ex:
         log.debug(traceback.format_exc())
-        log.error(f'A critical error has occured. {ex}.\nThe app will now close.')
+        log.error(_shared_mod.CRITICAL_ERROR_LOG % ex)
 
 
 if __name__ == '__main__':

@@ -2,12 +2,14 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Union
 
+APP_INFO_LOG = 'Spotify Shell. @Copyright 2020'
 LEGAL_NOTICE = """"
     Spotify CLI  Copyright (C) 2020  Ndamulelo Nemakhavhani
     This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
     This is free software, and you are welcome to redistribute it
     under certain conditions; type `show c' for details
 """
+CRITICAL_ERROR_LOG = 'A critical error has occured, the app will now close.\n%s'
 
 
 class AppConfig:
