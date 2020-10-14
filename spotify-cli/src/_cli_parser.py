@@ -4,12 +4,11 @@ import datetime
 import sys
 import traceback
 
-from progress.spinner import Spinner
-
 import _authorizer
 import _shared_mod
 import _spotify_web_api as spotify
 from _logger import default_logger as log
+from progress.spinner import Spinner
 
 # region Parser Configuration
 
@@ -55,8 +54,11 @@ get_users_favourites_parser.add_argument('--time', '-tr',
 # region Command handlers
 
 class CommandHandler(abc.ABC):
-    def __init__(self, context_object):
+    def __init__(self, context_object: argparse.Namespace):
         self._Context = context_object
+        self._save_to_file = context_object.save_to_file
+        self._output_file = context_object.output_file
+        self._file_format = context_object.file_format
 
     @staticmethod
     def handle_missing_scopes_error(scopes):
@@ -146,8 +148,9 @@ class PersonalisationCommandHandler(CommandHandler):
         self._args.entity_type = _shared_mod.PersonalisationEntityTypes.Artists.value
         api = spotify.PersonalisationAPI(params=self._args)
         json_response = api.get_top_tracks_and_artists()
-        print()
+        print()  # TODO: allow clients to specify multiple output options
         print(spotify.PersonalisationAPI.pretify_json(json_response))
+        return json_response
 
     def _get_top_tracks(self):
         log.info('Finding your top tracks..')
@@ -156,6 +159,7 @@ class PersonalisationCommandHandler(CommandHandler):
         json_response = api.get_top_tracks_and_artists()
         print()
         print(spotify.PersonalisationAPI.pretify_json(json_response))
+        return json_response
 
     def handle(self):
         function_name = sys.argv[2]

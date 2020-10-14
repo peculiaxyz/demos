@@ -18,11 +18,10 @@ from datetime import datetime
 from enum import Enum
 from http import HTTPStatus
 
-import flask
-import requests
-
 import _app_config as cfg
 import _shared_mod
+import flask
+import requests
 from _logger import default_logger as log
 
 DEFAULT_SCOPES = ' '.join([_shared_mod.SpotifyScope.READ_PRIVATE.value,

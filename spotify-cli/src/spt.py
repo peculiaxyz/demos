@@ -8,11 +8,10 @@ import sys
 import traceback
 import typing
 
-import dotenv
-
 import _app_config
 import _cli_parser as cli
 import _shared_mod
+import dotenv
 from _logger import default_logger as log
 
 
