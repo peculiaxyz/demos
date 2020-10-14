@@ -43,6 +43,7 @@ server_formatter = \
                       ' %(levelname)s [ %(module)s.%(funcName)s ] %(lineno)d:  %(message)s')
 
 default_logger = logging.getLogger('Spotify Logger')
+default_logger.setLevel(logging.DEBUG)
 
 # Create console handler for logging for minimal app info logs
 console_handler = StreamHandler(sys.stdout)

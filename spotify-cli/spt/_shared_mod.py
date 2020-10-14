@@ -22,6 +22,11 @@ class InvalidCommandError(Exception):
     pass
 
 
+class InvalidUsageError(Exception):
+    def __str__(self):
+        return 'Invalid usage, please type spt --help to view usage instructions'
+
+
 class InvalidCommandHandlerError(Exception):
     pass
 

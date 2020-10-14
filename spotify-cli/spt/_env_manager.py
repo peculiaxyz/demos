@@ -25,6 +25,7 @@ class EnvironmentManager:
 
     @staticmethod
     def _set_environment_variables(settings: typing.List[str]):
+        # TODO: what to do if env values are set with qoutes??
         for setting in settings:
             setting_name = setting.split("=")[0].strip()
             setting_name = EnvironmentManager._remove_export_or_set(setting_name)

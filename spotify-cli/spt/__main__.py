@@ -33,8 +33,14 @@ class CommandDispatcher:
         log.debug(f'Found handler {handler_class.__name__} for  command {command}')
         return handler_class
 
+    @staticmethod
+    def _validate_args():
+        if not len(sys.argv) >= 2:
+            raise _shared_mod.InvalidUsageError
+
     def execute(self):
         log.debug('Executing CommandDispatcher')
+        self._validate_args()
         selected_command = self._extract_subcommand_from_stdin()
         command_handler = self._get_command_handler(selected_command)
         handler_context = self._parser.parse_args()
@@ -46,8 +52,9 @@ class BootStrapper:
     @staticmethod
     def execute():
         log.debug('Executing BootStrapper')
-        _env_manager.EnvironmentManager.initialise()
+        env_settings = _env_manager.EnvironmentManager.initialise()
         log.debug(' > Enviroment variables loaded')
+        print(env_settings)
 
         _app_config.GlobalConfiguration.initialise()
         log.debug(' > Global configuration loaded')
@@ -60,11 +67,16 @@ def main():
         cmd_dispatcher = CommandDispatcher(parser_obj=cli.main_cli_parser)
         cmd_dispatcher.execute()
     except _shared_mod.InvalidCommandError:
-        log.debug(traceback.format_exc())
+        log.error("Unknown command detected, please see usage instructions below")
+        cli.main_cli_parser.print_help()
+    except _shared_mod.InvalidUsageError:
+        log.error("Wrong usage, please see usage instructions below")
         cli.main_cli_parser.print_help()
     except Exception as ex:
-        log.debug(traceback.format_exc())
         log.error(_shared_mod.CRITICAL_ERROR_LOG % ex)
+    finally:
+        # Dump error details to file logger for trouble-shooting
+        log.debug(traceback.format_exc())
 
 
 if __name__ == '__main__':
