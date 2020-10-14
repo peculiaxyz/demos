@@ -5,7 +5,7 @@ with open("ReadMe.md", "r") as fh:
 
 setuptools.setup(
     name="spotifyshell",
-    version="0.0.1",
+    version="0.0.2",
     author="Ndamulelo Nemakhavhani",
     author_email="ndamuspector@gmail.com",
     description="Interact with the Spotify Web API via the command line",
