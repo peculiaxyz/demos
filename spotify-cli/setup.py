@@ -4,7 +4,7 @@ with open("ReadMe.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="spotifyshell",
+    name="spt",
     version="0.0.2",
     author="Ndamulelo Nemakhavhani",
     author_email="ndamuspector@gmail.com",

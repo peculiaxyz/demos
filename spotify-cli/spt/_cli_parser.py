@@ -4,11 +4,12 @@ import datetime
 import sys
 import traceback
 
+from progress.spinner import Spinner
+
 import _authorizer
 import _shared_mod
 import _spotify_web_api as spotify
 from _logger import default_logger as log
-from progress.spinner import Spinner
 
 # region Parser Configuration
 

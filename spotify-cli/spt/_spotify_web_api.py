@@ -5,9 +5,10 @@ from datetime import datetime
 from http import HTTPStatus
 from typing import List
 
+import requests
+
 import _authorizer
 import _shared_mod
-import requests
 
 
 class RequestExecutorBase(abc.ABC):
