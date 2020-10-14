@@ -3,6 +3,7 @@ __all__ = ['default_logger', 'ConsoleColorsEnum']
 
 import logging
 import os
+import pathlib
 import sys
 import traceback
 from datetime import datetime
@@ -22,6 +23,8 @@ class ConsoleColorsEnum:
 
 def _get_log_file():
     """Cretae the logfile if it does not exist already"""
+    pathlib.Path('logs').mkdir(parents=True, exist_ok=True)
+
     todays_date = datetime.today().strftime("%Y_%m_%d")
     logfilename = 'spt_%s.log' % todays_date
     logfilepath = os.path.join('logs', logfilename)
