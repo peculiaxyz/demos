@@ -1,6 +1,4 @@
 """Handlers logging to console, logfiles etc."""
-
-__author__ = 'N Nemakhavhani'
 __all__ = ['default_logger', 'ConsoleColorsEnum']
 
 import logging

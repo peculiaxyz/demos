@@ -9,8 +9,6 @@ import _env_manager
 import _shared_mod
 from _logger import default_logger as log
 
-__all__ = ['main']
-
 
 class CommandDispatcher:
     def __init__(self, parser_obj: argparse.ArgumentParser):

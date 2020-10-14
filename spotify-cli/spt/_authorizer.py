@@ -1,9 +1,6 @@
 """Handles Spotify Authorization Code Flow"""
 
 __all__ = ['AuthorizerService', 'AuthorizationServer', 'AuthEvent', 'AuthServerStatus']
-__author__ = 'N Nemakhavhani'
-__version__ = '1.0.0'
-__licencse__ = 'MIT'
 
 import json
 import os
