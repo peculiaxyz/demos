@@ -4,7 +4,7 @@ with open("ReadMe.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="spotifycli",
+    name="spotifyshell",
     version="0.0.1",
     author="Ndamulelo Nemakhavhani",
     author_email="ndamuspector@gmail.com",
@@ -15,7 +15,7 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: GNU General Public License v3",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',

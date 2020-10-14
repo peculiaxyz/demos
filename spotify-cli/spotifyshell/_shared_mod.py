@@ -2,6 +2,13 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Union
 
+LEGAL_NOTICE = """"
+    Spotify CLI  Copyright (C) 2020  Ndamulelo Nemakhavhani
+    This program comes with ABSOLUTELY NO WARRANTY; for details type `show w'.
+    This is free software, and you are welcome to redistribute it
+    under certain conditions; type `show c' for details
+"""
+
 
 class AppConfig:
     pass

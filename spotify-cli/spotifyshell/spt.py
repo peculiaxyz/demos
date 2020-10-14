@@ -60,7 +60,7 @@ class BootStrapper:
 
 def main():
     try:
-        log.info('Spotify CLI. @Copyright 2020')
+        log.info('Spotify Shell. @Copyright 2020')
         BootStrapper.execute()
         cmd_dispatcher = CommandDispatcher(parser_obj=cli.main_cli_parser)
         cmd_dispatcher.execute()
