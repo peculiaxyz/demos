@@ -57,9 +57,10 @@ get_users_favourites_parser.add_argument('--time', '-tr',
 class CommandHandler(abc.ABC):
     def __init__(self, context_object: argparse.Namespace):
         self._Context = context_object
-        self._save_to_file = context_object.save_to_file
-        self._output_file = context_object.output_file
-        self._file_format = context_object.file_format
+        # TODO
+        # self._save_to_file = context_object.save_to_file
+        # self._output_file = context_object.output_file
+        # self._file_format = context_object.file_format
 
     @staticmethod
     def handle_missing_scopes_error(scopes):

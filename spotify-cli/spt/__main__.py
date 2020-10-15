@@ -23,7 +23,7 @@ class CommandDispatcher:
         log.debug('Extracting command to execute from STDIN: ', sys.argv)
         subcommand = str(sys.argv[1]).strip().lower()
         if subcommand not in self._command_handler_map.keys():
-            raise _shared_mod.InvalidCommandError(f'Invalid or unsurpoted command | {subcommand} |')
+            raise _shared_mod.InvalidCommandError(f'Invalid or unsupported command | {subcommand} |')
         return subcommand
 
     def _get_command_handler(self, command: str) -> typing.Type[cli.CommandHandler]:
@@ -52,9 +52,8 @@ class BootStrapper:
     @staticmethod
     def execute():
         log.debug('Executing BootStrapper')
-        env_settings = _env_manager.EnvironmentManager.initialise()
+        _env_manager.EnvironmentManager.initialise()
         log.debug(' > Enviroment variables loaded')
-        print(env_settings)
 
         _app_config.GlobalConfiguration.initialise()
         log.debug(' > Global configuration loaded')
