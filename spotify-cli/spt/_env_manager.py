@@ -25,7 +25,7 @@ class InvalidEnvSettingsError(Exception):
 
 
 class EnvironmentManager:
-    __env_location = '.env'  # Specifies the location of .env file
+    __env_location = 'config/.env'
     __required_settings = ['SPT_CLIENT_ID', 'SPT_CLIENT_SECRET', 'SPT_REDIRECT_URI', 'SPT_HOST_IP', 'SPT_HOST_PORT']
     Settings = {}
 

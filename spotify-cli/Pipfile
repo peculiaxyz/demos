@@ -6,6 +6,9 @@ verify_ssl = true
 [dev-packages]
 
 [packages]
+Flask = "*"
+requests = "*"
+progress = "*"
 
 [requires]
 python_version = "3.8"
