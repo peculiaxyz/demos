@@ -17,6 +17,13 @@ class AppConfig:
 
 
 # region Custom Exceptions
+class GlobalConfigurationError(Exception):
+    def __init__(self, filepath):
+        self._config_store = filepath
+
+    def __str__(self):
+        return f'Configuration file {self._config_store} not found'
+
 
 class InvalidCommandError(Exception):
     pass
