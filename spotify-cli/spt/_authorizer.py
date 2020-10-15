@@ -94,6 +94,7 @@ class SpotifyToken:
 
 
 class AuthorizerService:
+    __default_security_store = '.credentials.json'
     __current_user_email = 'todo@spotify.com'
     __auth_subscribers = {}
     __credentials = None
@@ -101,7 +102,7 @@ class AuthorizerService:
 
     @staticmethod
     def _load_saved_credentials():
-        credpath = os.getenv('CREDENTIALS_STORE')
+        credpath = os.getenv('SPT_SECURITY_STORE', default=AuthorizerService.__default_security_store)
         if not os.path.exists(credpath):
             return None
 
@@ -143,7 +144,8 @@ class AuthorizerService:
     @staticmethod
     def _save_credentials(json_response):
         token_object = SpotifyToken.from_json_response(json_response)
-        with open(os.getenv('CREDENTIALS_STORE'), 'w') as json_file:
+        with open(os.getenv('SPT_SECURITY_STORE', default=AuthorizerService.__default_security_store),
+                  'w') as json_file:
             json.dump(token_object.to_dict(), json_file, indent=4)
             log.debug('Security info succcessfully stored.')
             return token_object  # TODO: Is this secure?
@@ -155,9 +157,9 @@ class AuthorizerService:
         code = request_object.args.get('code')
         body = {'grant_type': 'authorization_code',
                 'code': code,
-                'client_id': os.getenv('CLIENT_ID'),
-                'client_secret': os.getenv('CLIENT_SECRET'),
-                'redirect_uri': os.getenv('REDIRECT_URI')
+                'client_id': os.getenv('SPT_CLIENT_ID'),
+                'client_secret': os.getenv('SPT_CLIENT_SECRET'),
+                'redirect_uri': os.getenv('SPT_REDIRECT_URI')
                 }
         response: requests.Response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL.value, data=body)
         if response.status_code == HTTPStatus.OK:
@@ -213,8 +215,8 @@ class AuthorizerService:
             return False
         AuthorizerService.__state_key = uuid.uuid4()
         auth_req_params = {'response_type': 'code',
-                           'client_id': os.getenv('CLIENT_ID'),
-                           'redirect_uri': os.getenv('REDIRECT_URI'),
+                           'client_id': os.getenv('SPT_CLIENT_ID'),
+                           'redirect_uri': os.getenv('SPT_REDIRECT_URI'),
                            'scope': scopes,
                            'state': str(AuthorizerService.__state_key),
                            'show_dialog': 'true'}
@@ -234,8 +236,8 @@ class AuthorizerService:
         AuthorizerService.__state_key = uuid.uuid4()
 
         auth_req_params = {'response_type': 'code',
-                           'client_id': os.getenv('CLIENT_ID'),
-                           'redirect_uri': os.getenv('REDIRECT_URI'),
+                           'client_id': os.getenv('SPT_CLIENT_ID'),
+                           'redirect_uri': os.getenv('SPT_REDIRECT_URI'),
                            'scope': scopes,
                            'state': str(AuthorizerService.__state_key),
                            'show_dialog': 'true'}
@@ -249,9 +251,9 @@ class AuthorizerService:
         log.debug('Refreshing access token')
         body = {'grant_type': 'refresh_token',
                 'refresh_token': credentials.refresh_token,
-                'client_id': os.getenv('CLIENT_ID'),
-                'client_secret': os.getenv('CLIENT_SECRET'),
-                'redirect_uri': os.getenv('REDIRECT_URI')
+                'client_id': os.getenv('SPT_CLIENT_ID'),
+                'client_secret': os.getenv('SPT_CLIENT_SECRET'),
+                'redirect_uri': os.getenv('SPT_REDIRECT_URI')
                 }
         response: requests.Response = requests.post(_shared_mod.SpotifyEndPoints.TOKEN_EXCHANGE_URL.value, data=body)
         if response.status_code == HTTPStatus.OK:
@@ -286,7 +288,7 @@ class AuthorizationServer:
 
     @staticmethod
     def _start():
-        host_ip, host_port = os.getenv('HOST_IP'), os.getenv('HOST_PORT')
+        host_ip, host_port = os.getenv('SPT_HOST_IP'), os.getenv('SPT_HOST_PORT')
         log.debug(f'Starting Authorization Server at {host_ip}:{host_port}')
         AuthorizationServer.app.run(host_ip, host_port)
         AuthorizerService.__status = AuthServerStatus.RUNNING

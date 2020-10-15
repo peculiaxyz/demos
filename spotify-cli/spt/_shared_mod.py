@@ -114,6 +114,8 @@ class SpotifyAuthSections(Enum):
 class PersonalisationEntityTypes(Enum):
     Artists = 'artists'
     Tracks = 'tracks'
+
+
 # endregion
 
 

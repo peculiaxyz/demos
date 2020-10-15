@@ -3,8 +3,20 @@ import os
 import typing
 
 
+class MissingEnvSettingsError(Exception):
+    def __init__(self, missing_settings: typing.List[str]):
+        self.missing_settings = missing_settings
+
+    def __str__(self):
+        error = "The following Environment Variables Are Missing.\n"
+        error += "%s\n" % self.missing_settings
+        error += "Use export <setting-name> for unix or set <setting-name> for windows"
+        return error
+
+
 class EnvironmentManager:
     __env_location = '.env'  # Specifies the location of .env file
+    __required_settings = ['SPT_CLIENT_ID', 'SPT_CLIENT_SECRET', 'SPT_REDIRECT_URI', 'SPT_HOST_IP', 'SPT_HOST_PORT']
     Settings = {}
 
     @staticmethod
@@ -32,6 +44,15 @@ class EnvironmentManager:
             setting_value = setting.split("=")[1].strip()
             os.environ[setting_name] = setting_value
             EnvironmentManager.Settings[setting_name] = setting_value
+        return EnvironmentManager.Settings
+
+    @staticmethod
+    def _verify_settings():
+        required_set = set(EnvironmentManager.__required_settings)
+        configured_set = set(EnvironmentManager.Settings)
+        missing_settings = list(required_set.difference(configured_set))
+        if missing_settings:
+            raise MissingEnvSettingsError(missing_settings)
 
     @staticmethod
     def initialise():
