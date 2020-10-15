@@ -20,7 +20,7 @@ class CommandDispatcher:
         }
 
     def _extract_subcommand_from_stdin(self):
-        log.debug('Extracting command to execute from STDIN: ', sys.argv)
+        log.debug(f'Extracting command to execute from STDIN: {sys.argv}')
         subcommand = str(sys.argv[1]).strip().lower()
         if subcommand not in self._command_handler_map.keys():
             raise _shared_mod.InvalidCommandError(f'Invalid or unsupported command | {subcommand} |')

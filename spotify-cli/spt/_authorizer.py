@@ -210,7 +210,7 @@ class AuthorizerService:
     @staticmethod
     def login(scopes=DEFAULT_SCOPES):
         if AuthorizerService.is_logged_in():
-            log.info(f'Already logged in as..{AuthorizerService.__current_user_email}')
+            log.info(f'Abort. Already logged in as..{AuthorizerService.__current_user_email}')
             AuthorizerService.notify_auth_completed(has_error=False)
             return False
         AuthorizerService.__state_key = uuid.uuid4()
