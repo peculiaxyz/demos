@@ -10,6 +10,8 @@ class GlobalConfiguration:
     AppSettings = {}
     LogSettings = {}
 
+    # region Intrinsic methos
+
     @staticmethod
     def initialise():
         if not os.path.exists(GlobalConfiguration.__config_store):
@@ -29,5 +31,17 @@ class GlobalConfiguration:
         return GlobalConfiguration.initialise()
 
     @staticmethod
+    def save_configuration():
+        config = GlobalConfiguration.get_configuration()
+        with open(GlobalConfiguration.__config_store, 'w') as configfl:
+            config.write(configfl)
+            return config
+
+    # endregion
+
+    # region Convenience methoss
+    @staticmethod
     def get_app_name():
         return GlobalConfiguration.AppSettings.get('APP_NAME')
+
+    # endregion
