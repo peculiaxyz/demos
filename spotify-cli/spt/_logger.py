@@ -21,6 +21,18 @@ class ConsoleColorsEnum:
 
 # region Logging Configuration
 
+LogLevelNameToLevel = {
+    'CRITICAL': logging.CRITICAL,
+    'FATAL': logging.FATAL,
+    'ERROR': logging.ERROR,
+    'WARN': logging.WARNING,
+    'WARNING': logging.WARNING,
+    'INFO': INFO,
+    'DEBUG': DEBUG,
+    'NOTSET': logging.NOTSET,
+}
+
+
 def _get_log_file():
     """Cretae the logfile if it does not exist already"""
     pathlib.Path('logs').mkdir(parents=True, exist_ok=True)

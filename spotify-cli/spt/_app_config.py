@@ -42,6 +42,7 @@ class GlobalConfiguration:
     # region Convenience methoss
     @staticmethod
     def get_app_name():
-        return GlobalConfiguration.AppSettings.get('APP_NAME')
+        config = GlobalConfiguration.get_configuration()
+        return config.get('APP_SETTINGS', 'APP_NAME')
 
     # endregion

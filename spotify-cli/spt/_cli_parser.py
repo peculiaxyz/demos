@@ -35,18 +35,24 @@ library_parser.add_argument('--limit', '-l', default=30, dest='limit', type=int,
                             help='Maximum no. of results per query')
 
 # [Spotify] Personalisation API subparser
+
 personalisation_parser = subparsers.add_parser('personalise', help='Get the current user’s top artists or tracks ')
 personalize_subparsers = personalisation_parser.add_subparsers()
 
-get_users_favourites_parser = personalize_subparsers.add_parser('GetTopArtists',
-                                                                parents=[common_fetch_parser],
-                                                                help="Example: spt personalise GetTopArtists")
-get_users_favourites_parser.add_argument('--time', '-tr',
-                                         dest='time_range',
-                                         default='medium_term',
-                                         choices=['long_term', 'medium_term', 'short_term'],
-                                         help='Time range, i.e. medium term(6 months), short term(4 weeks)'
-                                              ' or long term(several years)')
+personalise_base_parser = argparse.ArgumentParser(add_help=False)
+personalise_base_parser.add_argument('--time', '-tr',
+                                     dest='time_range',
+                                     default='medium_term',
+                                     choices=['long_term', 'medium_term', 'short_term'],
+                                     help='medium term(~6 months), short term(~4 weeks) or long term(several years)')
+
+top_artists_parser = personalize_subparsers.add_parser('GetTopArtists',
+                                                       parents=[common_fetch_parser, personalise_base_parser],
+                                                       help="Example: spt personalise GetTopArtists")
+
+top_tracks_parser = personalize_subparsers.add_parser('GetTopTracks',
+                                                      parents=[common_fetch_parser, personalise_base_parser],
+                                                      help="Example: spt personalise GetTopTracks --limit 2")
 
 
 # endregion
