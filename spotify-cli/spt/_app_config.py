@@ -5,7 +5,7 @@ import _shared_mod
 
 
 class GlobalConfiguration:
-    __config_store = 'appconfig.ini'
+    __config_store = os.getenv('CONFIG_STORE') or 'config/appconfig.ini'
     __config = None
     AppSettings = {}
     LogSettings = {}
