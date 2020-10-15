@@ -14,6 +14,16 @@ class MissingEnvSettingsError(Exception):
         return error
 
 
+class InvalidEnvSettingsError(Exception):
+    def __init__(self, invalid_settings: typing.List[str]):
+        self.invalid_settings = invalid_settings
+
+    def __str__(self):
+        error = "The following Environment Settings Are Invalid, Please Correct.\n"
+        error += "%s\n" % self.invalid_settings
+        return error
+
+
 class EnvironmentManager:
     __env_location = '.env'  # Specifies the location of .env file
     __required_settings = ['SPT_CLIENT_ID', 'SPT_CLIENT_SECRET', 'SPT_REDIRECT_URI', 'SPT_HOST_IP', 'SPT_HOST_PORT']
@@ -53,6 +63,13 @@ class EnvironmentManager:
         missing_settings = list(required_set.difference(configured_set))
         if missing_settings:
             raise MissingEnvSettingsError(missing_settings)
+
+        invalid_settings = []
+        for setting in EnvironmentManager.__required_settings:
+            if os.getenv(setting) in (None, ''):
+                invalid_settings.append(setting)
+        if invalid_settings:
+            raise InvalidEnvSettingsError(invalid_settings)
 
     @staticmethod
     def initialise():
