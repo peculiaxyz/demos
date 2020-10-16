@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="spt",
-    version="1.0.5",
+    version="1.0.7",
     author="Ndamulelo Nemakhavhani",
     author_email="ndamuspector@gmail.com",
     description="Interact with the Spotify Web API via the command line",
@@ -20,6 +20,6 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     data_files=[
-        ("config", ["spt/config/appconfig.ini"])
+        ("config", ["spt/config/sptconfig.ini"])
     ]
 )

@@ -7,11 +7,11 @@ import _shared_mod
 from _env_manager import EnvironmentManager
 
 PROD_DATA_PATH = pkg_resources.resource_filename('spt', 'config/')
-PROD_CONFIG_FILE = os.path.join(PROD_DATA_PATH, 'appconfig.ini')
+PROD_CONFIG_FILE = os.path.join(PROD_DATA_PATH, 'sptconfig.ini')
 
 
 class GlobalConfiguration:
-    __config_store = 'config/appconfig.ini' if not EnvironmentManager.is_production() else PROD_CONFIG_FILE
+    __config_store = 'config/sptconfig.ini' if not EnvironmentManager.is_production() else PROD_CONFIG_FILE
     __config = None
     AppSettings = {}
     LogSettings = {}

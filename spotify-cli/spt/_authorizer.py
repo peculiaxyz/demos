@@ -19,11 +19,13 @@ import flask
 import requests
 
 import _app_config as cfg
+import _env_manager
 import _shared_mod
 from _logger import default_logger as log
 
 DEFAULT_SCOPES = ' '.join([_shared_mod.SpotifyScope.READ_PRIVATE.value,
                            _shared_mod.SpotifyScope.READ_EMAIL.value,
+                           _shared_mod.SpotifyScope.READ_TOP.value,
                            _shared_mod.SpotifyScope.READ_LIBRARY.value])
 STD_DATETIME_FMT = '%Y%m%d_%H:%M:%S'
 AUTHENTICATION_ERROR = 'Authorization code not received.\nError Code: Http %s.\nError Message: %s'
@@ -290,7 +292,8 @@ class AuthorizationServer:
     def _start():
         host_ip, host_port = os.getenv('SPT_HOST_IP'), os.getenv('SPT_HOST_PORT')
         log.debug(f'Starting Authorization Server at {host_ip}:{host_port}')
-        AuthorizationServer.app.run(host_ip, host_port)
+        is_debug_mode = not _env_manager.EnvironmentManager.is_production()
+        AuthorizationServer.app.run(host_ip, host_port, debug=is_debug_mode)
         AuthorizerService.__status = AuthServerStatus.RUNNING
         return AuthorizationServer.__status
 
