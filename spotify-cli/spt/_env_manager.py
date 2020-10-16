@@ -25,7 +25,6 @@ class InvalidEnvSettingsError(Exception):
 
 
 class EnvironmentManager:
-    __env_location = 'config/.env'
     __required_settings = ['SPT_CLIENT_ID', 'SPT_CLIENT_SECRET', 'SPT_REDIRECT_URI', 'SPT_HOST_IP', 'SPT_HOST_PORT']
     Settings = {}
 
@@ -39,7 +38,7 @@ class EnvironmentManager:
 
     @staticmethod
     def _load_env_file():
-        env_path = os.getenv('ENV_PATH') or EnvironmentManager.__env_location
+        env_path = os.getenv('SPT_ENV_PATH')
         with open(env_path, 'r') as envfile:
             contents = envfile.readlines()
             contents = [item for item in contents if str(item).strip() not in (None, '')]

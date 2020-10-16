@@ -73,7 +73,7 @@ class CommandHandler(abc.ABC):
         response = input('Would you like to request additional scopes [Y or N]?    ')
         if str(response) not in ('Y', 'y', 'yes'):
             return
-        log.info('Initiating request to get additional scopes: ', scopes)
+        log.info(f'Initiating request to get additional scopes: {scopes}')
         if isinstance(scopes, list):
             scopes = ' '.join(scopes).strip()
 
