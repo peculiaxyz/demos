@@ -53,7 +53,7 @@ class BootStrapper:
     def execute():
         log.debug('Executing BootStrapper')
         _env_manager.EnvironmentManager.initialise()
-        log.debug(' > Enviroment variables loaded')
+        log.debug(f' > Enviroment variables loaded. Debug Mode = {_env_manager.EnvironmentManager.is_production()}')
 
         _app_config.GlobalConfiguration.initialise()
         log.debug(' > Global configuration loaded')

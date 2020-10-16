@@ -72,6 +72,14 @@ class EnvironmentManager:
             raise InvalidEnvSettingsError(invalid_settings)
 
     @staticmethod
+    def is_production():
+        EnvironmentManager.Settings = EnvironmentManager.Settings if EnvironmentManager.Settings \
+            else EnvironmentManager.initialise()
+
+        is_prod = EnvironmentManager.Settings['SPT_PRODUCTION'] in ('True', 'TRUE', 'true', '1')
+        return is_prod
+
+    @staticmethod
     def initialise():
         environment_file_settings = EnvironmentManager._load_env_file()
         EnvironmentManager._set_environment_variables(settings=environment_file_settings)

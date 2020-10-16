@@ -1,11 +1,17 @@
 import configparser
 import os
 
+import pkg_resources
+
 import _shared_mod
+from _env_manager import EnvironmentManager
+
+PROD_DATA_PATH = pkg_resources.resource_filename('spt', 'config/')
+PROD_CONFIG_FILE = os.path.join(PROD_DATA_PATH, 'appconfig.ini')
 
 
 class GlobalConfiguration:
-    __config_store = os.getenv('SPT_CONFIG_STORE') or 'config/appconfig.ini'
+    __config_store = 'config/appconfig.ini' if not EnvironmentManager.is_production() else PROD_CONFIG_FILE
     __config = None
     AppSettings = {}
     LogSettings = {}

@@ -1,11 +1,11 @@
 import setuptools
 
-with open("Readme.md", "r") as fh:
+with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="spt",
-    version="1.0.1",
+    version="1.0.5",
     author="Ndamulelo Nemakhavhani",
     author_email="ndamuspector@gmail.com",
     description="Interact with the Spotify Web API via the command line",
