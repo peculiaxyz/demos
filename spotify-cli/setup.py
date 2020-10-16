@@ -1,6 +1,6 @@
 import setuptools
 
-with open("ReadMe.md", "r") as fh:
+with open("Readme.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
@@ -20,6 +20,6 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     data_files=[
-        ('config', ['config/appconfig.ini'])
+        ("config", ["spt/config/appconfig.ini"])
     ]
 )
