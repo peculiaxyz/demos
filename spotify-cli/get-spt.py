@@ -7,11 +7,13 @@ import os
 import pathlib
 import shutil
 import sys
+from datetime import datetime
 
 PYTHON3_EXE_PATH = sys.executable
 PYTHON3_HOME = pathlib.Path(PYTHON3_EXE_PATH).parent
 INSTALL_SPT_CMD = "pip install -i https://test.pypi.org/simple/ spt --upgrade"
-SPT_BIN_DOWNLOAD_URL = ""
+SPT_BIN_DOWNLOAD_URL = "https://peculiapublicstorage.blob.core.windows.net/peculia-bins/spt.exe"
+SPT_BIN_DOWNLOAD_URL_POSIX = ""  # TODO
 
 
 class GetSptError(Exception):
@@ -49,17 +51,29 @@ def _install_or_update_spt_from_pip():
 
 
 def _download_spt_exe():
+    import urllib.request as req
     print(f"===== Downloading spt binary from {SPT_BIN_DOWNLOAD_URL} =======")
-    download_location = ""
-    print("Spt binary successfully downloaded")
-    return download_location
+    if os.name == 'nt':
+        download_location = os.path.join(os.getenv('LOCALAPPDATA'), 'Temp', f'spt_temp_{os.getpid()}.exe')
+
+        start_time = datetime.now()
+        print(f'Begin download...{start_time}')
+        req.urlretrieve(SPT_BIN_DOWNLOAD_URL, filename=download_location)
+        elapsed_seconds = (datetime.now() - start_time).total_seconds()
+        print(f"Download completed in {elapsed_seconds} seconds")
+
+        print(f"Spt binary successfully downloaded to {download_location}")
+        return download_location
+    raise NotImplementedError('Support for Posix coming soon..')
 
 
 def _copy_bin_to_python_scripts_path(src: str):
     if not os.path.exists(src):
         raise FileNotFoundError(src)
 
-    destination = os.path.join(PYTHON3_HOME, 'Scripts')
+    destination = os.path.join(PYTHON3_HOME, 'spt.exe') if pathlib.Path(PYTHON3_HOME).name.lower() == "scripts" else \
+        os.path.join(PYTHON3_HOME, 'Scripts', 'spt.exe')
+
     destination = shutil.move(src, destination)
     print(f"Spt bin successfully copied from {src} to {destination}")
 
@@ -74,3 +88,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+    # print(PYTHON3_HOME)
