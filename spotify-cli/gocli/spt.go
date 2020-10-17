@@ -14,7 +14,7 @@ import (
    Example: Use spt <some-command> instead of python -m spt <some-command>
 */
 const PYTHON3_ENV = "PYTHON3_EXE"
-const DEFAULT_PYTTHON3_EXE = "python38" // Make sure that this python is included in your PATH
+const DEFAULT_PYTTHON3_EXE = "python3" // Make sure that this python is included in your PATH
 
 func getCLIUsageInstructions() string {
 	print_help_args := []string{"-m", "spt", "--help"}
