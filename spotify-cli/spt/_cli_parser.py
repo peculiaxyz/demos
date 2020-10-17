@@ -77,7 +77,6 @@ class CommandHandler(abc.ABC):
         self._output_writer = None
 
     def _prepare_output_writer(self):
-        print(vars(self._Context))
         output_channels = [_shared_mod.SptOutputChannels.SdtOut.value]
         if self._Context.no_stdout:
             output_channels.remove(_shared_mod.SptOutputChannels.SdtOut.value)
