@@ -146,9 +146,10 @@ class AuthorizerService:
     @staticmethod
     def _save_credentials(json_response):
         token_object = SpotifyToken.from_json_response(json_response)
-        with open(os.getenv('SPT_SECURITY_STORE', default=AuthorizerService.__default_security_store),
-                  'w') as json_file:
+        credentials_file = os.getenv('SPT_SECURITY_STORE', default=AuthorizerService.__default_security_store)
+        with open(credentials_file, 'w') as json_file:
             json.dump(token_object.to_dict(), json_file, indent=4)
+            os.system(f"attrib +h {credentials_file}")
             log.debug('Security info succcessfully stored.')
             return token_object  # TODO: Is this secure?
 

@@ -42,7 +42,7 @@ def _get_log_file():
 
     todays_date = datetime.today().strftime("%Y_%m_%d")
     logfilename = 'spt_%s.log' % todays_date
-    logfilepath = os.path.join('logs', logfilename)
+    logfilepath = os.path.join(logs_rootpath, logfilename)
 
     if not os.path.exists(logfilepath):
         with open(logfilepath, 'w') as logfl:

@@ -39,7 +39,7 @@ class EnvironmentManager:
 
     @staticmethod
     def _load_env_file():
-        env_path = os.getenv('SPT_ENV_PATH')
+        env_path = os.getenv('SPT_ENV_PATH', '.env')
         if not pathlib.Path(env_path).exists():
             return False, ''
 

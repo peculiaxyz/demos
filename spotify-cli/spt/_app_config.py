@@ -1,5 +1,6 @@
 import configparser
 import os
+import shutil
 
 import pkg_resources
 
@@ -14,17 +15,27 @@ class GlobalConfiguration:
     LogSettings = {}
 
     @staticmethod
+    def _copy_config_to_app_data_path():
+        _ = pkg_resources.resource_stream('spt', 'config/sptconfig.ini')
+        destination = os.path.join(EnvironmentManager.get_app_data_dir(), 'config')
+        shutil.copyfile('config/sptconfig.ini', destination)
+        os.remove('config/sptconfig.ini')
+        return os.path.join(destination, 'sptconfig.ini')
+
+    @staticmethod
     def _read_configuration(parser: configparser.ConfigParser):
         if not EnvironmentManager.is_production():
             GlobalConfiguration.__config_store = 'config/sptconfig.ini'
+            if not os.path.exists(GlobalConfiguration.__config_store):
+                raise _shared_mod.GlobalConfigurationError(GlobalConfiguration.__config_store)
+
             parser.read(GlobalConfiguration.__config_store)
             return parser
 
-        config_resource = pkg_resources.resource_stream('spt', 'config/sptconfig.ini')
-        config_store = os.path.join(EnvironmentManager.get_app_data_dir(), 'config', 'sptconfig.ini')
-        with open(config_store, 'w') as fl:
-            fl.write(config_resource.read().decode('utf8'))
-        GlobalConfiguration.__config_store = config_store
+        GlobalConfiguration.__config_store = GlobalConfiguration._copy_config_to_app_data_path()
+        if not os.path.exists(GlobalConfiguration.__config_store):
+            raise _shared_mod.GlobalConfigurationError(GlobalConfiguration.__config_store)
+
         parser.read(GlobalConfiguration.__config_store)
         return parser
 
@@ -32,9 +43,6 @@ class GlobalConfiguration:
 
     @staticmethod
     def initialise():
-        if not os.path.exists(GlobalConfiguration.__config_store):
-            raise _shared_mod.GlobalConfigurationError(GlobalConfiguration.__config_store)
-
         config = configparser.ConfigParser()
         config = GlobalConfiguration._read_configuration(config)
         GlobalConfiguration.__config = config
