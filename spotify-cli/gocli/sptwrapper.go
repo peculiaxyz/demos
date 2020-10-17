@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 import "log"
+import "os"
 import "os/exec"
 
 
@@ -14,6 +15,12 @@ import "os/exec"
 
 
 func main() {
+    cmd_line_args := os.Args[1:]
+    if len(cmd_line_args) < 1{
+        log.Fatal("Invalid usage. Please see the usage instructions below")
+    }
+    // out, err := exec.Command("python38", "-m", "spt", "login").Output()
+    fmt.Println(cmd_line_args)
     out, err := exec.Command("python38", "-m", "spt", "login").Output()
     if err != nil {
         log.Fatal(err)
