@@ -9,6 +9,8 @@ import traceback
 from datetime import datetime
 from logging import DEBUG, FileHandler, INFO, StreamHandler
 
+import _env_manager
+
 
 class ConsoleColorsEnum:
     PURPLE = '\033[95m'
@@ -35,7 +37,8 @@ LogLevelNameToLevel = {
 
 def _get_log_file():
     """Cretae the logfile if it does not exist already"""
-    pathlib.Path('logs').mkdir(parents=True, exist_ok=True)
+    logs_rootpath = os.path.join(_env_manager.EnvironmentManager.get_app_data_dir(), 'logs')
+    pathlib.Path(logs_rootpath).mkdir(parents=True, exist_ok=True)
 
     todays_date = datetime.today().strftime("%Y_%m_%d")
     logfilename = 'spt_%s.log' % todays_date

@@ -1,5 +1,6 @@
 """"Helper module to read and set environment variable from the .env file"""
 import os
+import pathlib
 import typing
 
 
@@ -39,13 +40,16 @@ class EnvironmentManager:
     @staticmethod
     def _load_env_file():
         env_path = os.getenv('SPT_ENV_PATH')
+        if not pathlib.Path(env_path).exists():
+            return False, ''
+
         with open(env_path, 'r') as envfile:
             contents = envfile.readlines()
             contents = [item for item in contents if str(item).strip() not in (None, '')]
-            return contents
+            return True, contents
 
     @staticmethod
-    def _set_environment_variables(settings: typing.List[str]):
+    def _set_from_env_file(settings: typing.List[str]):
         # TODO: what to do if env values are set with qoutes??
         for setting in settings:
             setting_name = setting.split("=")[0].strip()
@@ -57,12 +61,6 @@ class EnvironmentManager:
 
     @staticmethod
     def _verify_settings():
-        required_set = set(EnvironmentManager.__required_settings)
-        configured_set = set(EnvironmentManager.Settings)
-        missing_settings = list(required_set.difference(configured_set))
-        if missing_settings:
-            raise MissingEnvSettingsError(missing_settings)
-
         invalid_settings = []
         for setting in EnvironmentManager.__required_settings:
             if os.getenv(setting) in (None, ''):
@@ -71,15 +69,35 @@ class EnvironmentManager:
             raise InvalidEnvSettingsError(invalid_settings)
 
     @staticmethod
+    def get_app_data_dir():
+        if os.name == 'nt':  # Windows
+            app_data_dir = os.getenv('LOCALAPPDATA')
+            local_appdata_path = os.path.join(app_data_dir, 'Spt')
+            pathlib.Path(local_appdata_path).mkdir(parents=True, exist_ok=True)
+            return local_appdata_path
+
+        # Linux, Mac etc
+        app_data_dir = os.getenv('HOME')
+        local_appdata_path = os.path.join(app_data_dir, 'Spt')
+        pathlib.Path(local_appdata_path).mkdir(parents=True, exist_ok=True)
+        return local_appdata_path
+
+    @staticmethod
     def is_production():
         EnvironmentManager.Settings = EnvironmentManager.Settings if EnvironmentManager.Settings \
             else EnvironmentManager.initialise()
 
-        is_prod = EnvironmentManager.Settings['SPT_PRODUCTION'] in ('True', 'TRUE', 'true', '1')
+        is_prod = os.getenv('SPT_PRODUCTION') in ('True', 'TRUE', 'true', '1')
         return is_prod
 
     @staticmethod
     def initialise():
-        environment_file_settings = EnvironmentManager._load_env_file()
-        EnvironmentManager._set_environment_variables(settings=environment_file_settings)
+        env_file_exists, environment_file_settings = EnvironmentManager._load_env_file()
+        if env_file_exists:
+            EnvironmentManager._set_from_env_file(settings=environment_file_settings)
+            EnvironmentManager._verify_settings()
+            return EnvironmentManager.Settings
+
+        # Else assume already set , only verify .
+        EnvironmentManager._verify_settings()
         return EnvironmentManager.Settings
