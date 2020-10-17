@@ -1,6 +1,7 @@
+import json
 from dataclasses import dataclass
 from enum import Enum
-from typing import Union
+from typing import List, Union
 
 APP_INFO_LOG = 'Spotify Shell. @Copyright 2020'
 LEGAL_NOTICE = """"
@@ -131,4 +132,44 @@ class PersonlisationParams:
 @dataclass
 class UserLibraryParams:
     pass
+
+
 # region
+
+
+class SptOutputChannels(Enum):
+    SdtOut = "StdOut"
+    JsonFile = "JsonFile"
+
+
+class SptOutputWriter:
+    """Given a json output from a REST API call, print results to the console or json file
+    """
+
+    def __init__(self, channels: List[SptOutputChannels], output_path=None):
+        self._channels = channels
+        self._outpath = output_path
+        self._channel_handler_map = {
+            SptOutputChannels.StdOut: SptOutputWriter.print_to_std_out,
+            SptOutputChannels.JsonFile: SptOutputWriter.print_to_json_file,
+        }
+
+    @staticmethod
+    def pretify_json(json_data: dict) -> str:
+        pretty_json = json.dumps(json_data, indent=4)
+        return pretty_json
+
+    @staticmethod
+    def print_to_std_out(payload):
+        pretty_payload = SptOutputWriter.pretify_json(payload)
+        print(pretty_payload)
+
+    def print_to_json_file(self, payload):
+        with open(self._outpath, 'w') as json_file:
+            json.dump(payload, json_file, indent=4)
+
+    def execute(self, payload: dict):
+        for out_channel in self._channels:
+            handler = self._channel_handler_map.get(out_channel)
+            if handler is not None:
+                handler(payload)

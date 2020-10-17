@@ -19,7 +19,12 @@ common_fetch_parser = argparse.ArgumentParser(add_help=False)
 common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help='The maximum number of objects to '
                                                                                  'return. Default: 20. Minimum: 1. '
                                                                                  'Maximum: 50')
-common_fetch_parser.add_argument('--offset', '-o', default=0, dest='offset', help='Index of the first object to return')
+common_fetch_parser.add_argument('--offset', '-of', default=0, dest='offset',
+                                 help='Index of the first object to return')
+common_fetch_parser.add_argument('--out', '-o', default=None, dest='output_file',
+                                 help='Path to the output json file')
+common_fetch_parser.add_argument('--no_stdout', dest='no_std_out', action="store_false",
+                                 help='Do not print the json payload to the console')
 
 # Top-level/Parent main_cli_parser
 main_cli_parser = argparse.ArgumentParser(prog='Interact with the Spotify Web API via the command line')
@@ -63,10 +68,21 @@ top_tracks_parser = personalize_subparsers.add_parser('GetTopTracks',
 class CommandHandler(abc.ABC):
     def __init__(self, context_object: argparse.Namespace):
         self._Context = context_object
-        # TODO
-        # self._save_to_file = context_object.save_to_file
-        # self._output_file = context_object.output_file
-        # self._file_format = context_object.file_format
+        self._output_writer = None
+
+    def _prepare_output_writer(self):
+        output_channels = [_shared_mod.SptOutputChannels.SdtOut]
+        if self._Context.no_std_out:
+            output_channels.remove(_shared_mod.SptOutputChannels.SdtOut)
+
+        output_file = self._Context.output_file
+        if output_file not in (None, ''):
+            output_channels.append(_shared_mod.SptOutputChannels.JsonFile)
+
+        self._output_writer = _shared_mod.SptOutputWriter(channels=output_channels)
+        if not output_channels:
+            log.warn('There is not output channel specified. Results will not be displayed!')
+        return self._output_writer
 
     @staticmethod
     def handle_missing_scopes_error(scopes):
@@ -87,6 +103,7 @@ class CommandHandler(abc.ABC):
 
     def execute(self):
         try:
+            self._prepare_output_writer()
             return self.handle()
         except _shared_mod.NotLoggedInError:
             log.error(traceback.format_exc())
@@ -155,19 +172,17 @@ class PersonalisationCommandHandler(CommandHandler):
         log.info('Finding your top artists..')
         self._args.entity_type = _shared_mod.PersonalisationEntityTypes.Artists.value
         api = spotify.PersonalisationAPI(params=self._args)
-        json_response = api.get_top_tracks_and_artists()
-        print()  # TODO: allow clients to specify multiple output options
-        print(spotify.PersonalisationAPI.pretify_json(json_response))
-        return json_response
+        json_payload = api.get_top_tracks_and_artists()
+        self._output_writer.execute(json_payload)
+        return json_payload
 
     def _get_top_tracks(self):
         log.info('Finding your top tracks..')
         self._args.entity_type = _shared_mod.PersonalisationEntityTypes.Tracks.value
         api = spotify.PersonalisationAPI(params=self._args)
-        json_response = api.get_top_tracks_and_artists()
-        print()
-        print(spotify.PersonalisationAPI.pretify_json(json_response))
-        return json_response
+        json_payload = api.get_top_tracks_and_artists()
+        self._output_writer.execute(json_payload)
+        return json_payload
 
     def handle(self):
         function_name = sys.argv[2]
