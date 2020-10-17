@@ -42,6 +42,9 @@ class CommandDispatcher:
         log.debug('Executing CommandDispatcher')
         self._validate_args()
         selected_command = self._extract_subcommand_from_stdin()
+        if selected_command in ('help', '-h', '--help'):
+            log.info('Print help\n')
+            return
         command_handler = self._get_command_handler(selected_command)
         handler_context = self._parser.parse_args()
         handlder_obj = command_handler(handler_context)
