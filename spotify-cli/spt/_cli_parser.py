@@ -14,6 +14,11 @@ from _logger import default_logger as log
 # region Parser Configuration
 
 # Shared main_cli_parser - stores shared options
+parent_parser = argparse.ArgumentParser(add_help=False)
+parent_parser.add_argument('--out', '-o', default=None, dest='output_file',
+                           help='Path to the output json file')
+parent_parser.add_argument('--no_stdout', dest='no_stdout', action="store_true",
+                           help='Do not print the json payload to the console')
 
 common_fetch_parser = argparse.ArgumentParser(add_help=False)
 common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help='The maximum number of objects to '
@@ -21,21 +26,20 @@ common_fetch_parser.add_argument('--limit', '-l', default=30, dest='limit', help
                                                                                  'Maximum: 50')
 common_fetch_parser.add_argument('--offset', '-of', default=0, dest='offset',
                                  help='Index of the first object to return')
-common_fetch_parser.add_argument('--out', '-o', default=None, dest='output_file',
-                                 help='Path to the output json file')
-common_fetch_parser.add_argument('--no_stdout', dest='no_std_out', action="store_false",
-                                 help='Do not print the json payload to the console')
 
 # Top-level/Parent main_cli_parser
 main_cli_parser = argparse.ArgumentParser(prog='Interact with the Spotify Web API via the command line')
 subparsers = main_cli_parser.add_subparsers(help='Typical usage: spt <subcommand> [subcomand options]')
 
 # [Spotify] Authentication subparser
-login_parser = subparsers.add_parser('login', help='Authenticate against Spotify Web API using OAuth')
+login_parser = subparsers.add_parser('login', help='Authenticate against Spotify Web API using OAuth',
+                                     parents=[parent_parser])
 
 # [Spotify] Library API subparser
-library_parser = subparsers.add_parser('library', help='Get current users saved tracks, shows, albums etc.'
-                                                       'Example: spt library GetSavedAlbums')
+library_parser = subparsers.add_parser('library',
+                                       parents=[parent_parser],
+                                       help='Get current users saved tracks, shows, albums etc.'
+                                            'Example: spt library GetSavedAlbums')
 library_parser.add_argument('--limit', '-l', default=30, dest='limit', type=int,
                             help='Maximum no. of results per query')
 
@@ -52,11 +56,13 @@ personalise_base_parser.add_argument('--time', '-tr',
                                      help='medium term(~6 months), short term(~4 weeks) or long term(several years)')
 
 top_artists_parser = personalize_subparsers.add_parser('GetTopArtists',
-                                                       parents=[common_fetch_parser, personalise_base_parser],
+                                                       parents=[parent_parser, common_fetch_parser,
+                                                                personalise_base_parser],
                                                        help="Example: spt personalise GetTopArtists")
 
 top_tracks_parser = personalize_subparsers.add_parser('GetTopTracks',
-                                                      parents=[common_fetch_parser, personalise_base_parser],
+                                                      parents=[parent_parser,
+                                                               common_fetch_parser, personalise_base_parser],
                                                       help="Example: spt personalise GetTopTracks --limit 2")
 
 
@@ -71,13 +77,14 @@ class CommandHandler(abc.ABC):
         self._output_writer = None
 
     def _prepare_output_writer(self):
-        output_channels = [_shared_mod.SptOutputChannels.SdtOut]
-        if self._Context.no_std_out:
-            output_channels.remove(_shared_mod.SptOutputChannels.SdtOut)
+        print(vars(self._Context))
+        output_channels = [_shared_mod.SptOutputChannels.SdtOut.value]
+        if self._Context.no_stdout:
+            output_channels.remove(_shared_mod.SptOutputChannels.SdtOut.value)
 
         output_file = self._Context.output_file
         if output_file not in (None, ''):
-            output_channels.append(_shared_mod.SptOutputChannels.JsonFile)
+            output_channels.append(_shared_mod.SptOutputChannels.JsonFile.value)
 
         self._output_writer = _shared_mod.SptOutputWriter(channels=output_channels)
         if not output_channels:

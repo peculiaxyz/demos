@@ -1,5 +1,6 @@
 import configparser
 import os
+import pathlib
 import shutil
 
 import pkg_resources
@@ -16,11 +17,13 @@ class GlobalConfiguration:
 
     @staticmethod
     def _copy_config_to_app_data_path():
-        _ = pkg_resources.resource_stream('spt', 'config/sptconfig.ini')
-        destination = os.path.join(EnvironmentManager.get_app_data_dir(), 'config')
-        shutil.copyfile('config/sptconfig.ini', destination)
-        os.remove('config/sptconfig.ini')
-        return os.path.join(destination, 'sptconfig.ini')
+        _ = pkg_resources.resource_filename('spt', 'config/sptconfig.ini')
+        pathlib.Path(os.path.join(EnvironmentManager.get_app_data_dir(), 'config')).mkdir(parents=True, exist_ok=True)
+        destination = os.path.join(EnvironmentManager.get_app_data_dir(), 'config', 'sptconfig.ini')
+        if not os.path.exists(destination):
+            shutil.copyfile('config/sptconfig.ini', destination)
+            shutil.rmtree('config/', ignore_errors=True)
+        return destination
 
     @staticmethod
     def _read_configuration(parser: configparser.ConfigParser):

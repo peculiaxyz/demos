@@ -150,8 +150,8 @@ class SptOutputWriter:
         self._channels = channels
         self._outpath = output_path
         self._channel_handler_map = {
-            SptOutputChannels.StdOut: SptOutputWriter.print_to_std_out,
-            SptOutputChannels.JsonFile: SptOutputWriter.print_to_json_file,
+            SptOutputChannels.SdtOut.value: SptOutputWriter.print_to_std_out,
+            SptOutputChannels.JsonFile.value: SptOutputWriter.print_to_json_file,
         }
 
     @staticmethod

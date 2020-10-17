@@ -1,20 +1,12 @@
 import setuptools
 
 
-class PostInstallTasks:
-    @staticmethod
-    def execute():
-        with open('C:\\postinstall.txt', 'w') as f:
-            f.write('Random things')
-        print('TESTING: I AM A POST INSTALL SCRIPT')
-
-
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="spt",
-    version="1.1.0",
+    version="1.1.13",
     author="Ndamulelo Nemakhavhani",
     author_email="ndamuspector@gmail.com",
     description="Interact with the Spotify Web API via the command line",
@@ -30,8 +22,9 @@ setuptools.setup(
     python_requires='>=3.6',
     data_files=[
         ("config", ["spt/config/sptconfig.ini"])
-    ]
+    ],
+    package_data={
+        "config": ["spt/config/sptconfig.ini"]
+    },
+    include_package_data=True,
 )
-
-# Setup program data folders,config etc.
-PostInstallTasks().execute()
