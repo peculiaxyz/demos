@@ -1,4 +1,4 @@
-package sptwrapper
+package main
 
 import (
 	"fmt"
@@ -41,7 +41,8 @@ func executePython(args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(out)
+	stdout := string(out)
+	fmt.Println(stdout)
 }
 
 func setupPythonExe() {
@@ -53,7 +54,7 @@ func setupPythonExe() {
 
 func main() {
 	setupPythonExe()
-	
+	fmt.Println("Python Executable: ", os.Getenv(PYTHON3_ENV))
 	cmd_line_args := os.Args[1:]
 	default_args := []string{"-m", "spt"}
 
