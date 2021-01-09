@@ -6,8 +6,10 @@ name = "pypi"
 [packages]
 gunicorn = "==20.0.4"
 Flask = "==1.1.2"
-requests = "*"
+requests = "==2.25.1"
 twilio = "==6.50.1"
+google_cloud_dialogflow = "==2.0.0"
+dataclasses= "==0.8"
 
 [dev-packages]
 
