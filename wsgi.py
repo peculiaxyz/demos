@@ -11,9 +11,7 @@ def _build_twilio_response(message:str, media_url:str=None):
     response = MessagingResponse()
     message = response.message()
     message.body(message)
-    if media_url not in (None, ''):
-        message.media(media_url)
-    return str(response.to_xml())
+    return str(response)
 
 @app.route("/", methods=['POST'])
 def incoming_message_callback():
