@@ -9,8 +9,10 @@ logger.setLevel(logging.INFO)
 
 def _build_twilio_response(message:str, media_url:str=None):
     response = MessagingResponse()
-    message = response.message()
-    message.body(message)
+    msg = response.message()
+    msg.body(message)
+    if media_url not in (None, ''):
+        msg.media(media_url)
     return str(response)
 
 @app.route("/", methods=['POST'])
