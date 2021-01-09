@@ -4,11 +4,11 @@ app = Flask(__name__)
 
 
 @app.route("/", methods=['POST'])
-def index():
+def incoming_message_callback():
     return 'This is a demo whatsapp bot api'
 
 @app.route("/status", methods=['POST'])
-def index():
+def delivery_status_callback():
     return 'Delivery status for message, sent to = TBC'
 
 
